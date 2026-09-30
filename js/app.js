@@ -909,9 +909,60 @@
         return '<option value="' + esc(d.deviceId) + '"' + (d.deviceId === cur ? ' selected' : '') + '>' + esc(d.label || 'Kamera ' + (i + 1)) + '</option>';
       }).join('');
     }).catch(function (err) {
+      lastCamError = err;
       $('camOff').hidden = false;
       $('camOffText').textContent = cameraHelp(err);
     });
+  }
+
+  var lastCamError = null;
+  function inFrame() { try { return window.self !== window.top; } catch (e) { return true; } }
+
+  // Kamera neden açılmıyor: ortamı tek ekranda göster
+  function cameraDiagnose() {
+    var perm = navigator.permissions && navigator.permissions.query
+      ? navigator.permissions.query({ name: 'camera' }).then(function (r) { return r.state; }, function () { return 'bilinmiyor'; })
+      : Promise.resolve('bilinmiyor');
+    var devs = CAM.listDevices().then(function (d) { return d.length; }, function () { return '?'; });
+    return Promise.all([perm, devs]).then(function (r) {
+      var permTr = { granted: 'İzin verilmiş', denied: 'ENGELLİ', prompt: 'Henüz sorulmadı' }[r[0]] || r[0];
+      var err = lastCamError;
+      var rows = [
+        ['Adres', location.protocol + '//' + location.host + location.pathname.slice(-40)],
+        ['Güvenli bağlam', window.isSecureContext ? 'Evet' : 'HAYIR'],
+        ['Başka sayfanın içinde (önizleme)', inFrame() ? 'EVET' : 'Hayır'],
+        ['Claude sayfası', inArtifact() ? 'EVET' : 'Hayır'],
+        ['Kamera izni', permTr],
+        ['Bulunan kamera sayısı', String(r[1])],
+        ['Kamera çalışıyor', CAM.isReady() ? 'Evet' : 'Hayır'],
+        ['Son hata', err ? (err.name || '') + ' – ' + (err.message || '') : '—'],
+        ['Tarayıcı', (navigator.userAgent.match(/(Edg|Chrome|Firefox|Safari)\/[\d.]+/) || [navigator.userAgent])[0]],
+      ];
+      var advice;
+      if (CAM.isReady()) advice = 'Kamera çalışıyor.';
+      else if (inArtifact() || inFrame() || location.protocol === 'blob:' || location.protocol === 'data:') {
+        advice = 'Sayfa bir önizleme/Claude sayfası içinde açılmış; burada kamera engellenir. Dosyayı bilgisayara indirin ve ' +
+          'Dosya Gezgini\'nden çift tıklayarak açın. Adres çubuğu file:/// ile başlamalı.';
+      } else if (!window.isSecureContext) {
+        advice = 'Adres güvenli değil (http). Dosyayı çift tıklayarak (file:///) açın.';
+      } else if (r[0] === 'denied' || (err && err.name === 'NotAllowedError')) {
+        advice = 'İzin engelli. Adres çubuğunun solundaki simge → Kamera → İzin ver → sayfayı yenileyin. ' +
+          'Orada seçenek yoksa Chrome\'da chrome://settings/content/camera adresini açıp engellenenler listesinden silin. ' +
+          'Yine olmuyorsa Windows Ayarlar → Gizlilik ve güvenlik → Kamera → "Masaüstü uygulamalarının kameraya erişmesine izin ver" açık olmalı ' +
+          '(Mac: Sistem Ayarları → Gizlilik ve Güvenlik → Kamera → Google Chrome açık).';
+      } else if (r[1] === 0) {
+        advice = 'Tarayıcı hiç kamera görmüyor. USB kamerayı başka porta takın; Windows Kamera uygulamasında görüntü geliyor mu bakın.';
+      } else if (err && /NotReadable|TrackStart|Abort/.test(err.name)) {
+        advice = 'Kamera başka bir programda açık. Teams/Zoom/WhatsApp/Kamera uygulamasını kapatıp "Kamerayı Aç"a basın.';
+      } else advice = '"Kamerayı Aç"a basın; izin sorulursa İzin ver deyin.';
+      return dialog({
+        title: 'Kamera tanılama',
+        narrow: true,
+        html: '<table class="grid">' + rows.map(function (x) { return '<tr><th>' + esc(x[0]) + '</th><td>' + esc(x[1]) + '</td></tr>'; }).join('') +
+          '</table><p><b>Öneri:</b> ' + esc(advice) + '</p><p class="muted">Sorun sürerse bu ekranın fotoğrafını gönderin.</p>',
+        buttons: [{ label: 'Kamerayı yeniden dene', value: 'retry' }, { label: 'Kapat', value: null, primary: true }],
+      });
+    }).then(function (v) { if (v === 'retry') startCamera(CAM.savedDeviceId()); });
   }
 
   // claude.ai Artifact içinde mi çalışıyoruz? (orada canlı kamera tarayıcı tarafından engellenir)
@@ -919,10 +970,15 @@
 
   function cameraHelp(err) {
     var name = err && err.name;
-    var tail = ' Kamera açılana kadar fotoğraflar dosyadan/telefon kamerasından eklenir.';
+    var tail = ' Kamera açılana kadar fotoğraflar dosyadan/telefon kamerasından eklenir.' +
+      (name ? ' [' + name + ']' : '');
     if (inArtifact()) {
       return 'Claude sayfasında canlı kamera kullanılamaz (izin istenmeden engellenir). Canlı kamera için ' +
         'programın bilgisayar sürümünü (iade-kabul.html) Chrome veya Edge ile açın.' + tail;
+    }
+    if (inFrame()) {
+      return 'Sayfa bir önizleme içinde açılmış; kamera burada engellenir. Dosyayı bilgisayara indirip çift tıklayarak açın ' +
+        '(adres çubuğu file:/// ile başlamalı).' + tail;
     }
     if (!window.isSecureContext || !navigator.mediaDevices) {
       return 'Sayfa güvenli olmayan bir adresten açıldı; tarayıcı kamerayı kapatıyor. Dosyayı çift tıklayarak ' +
@@ -1118,6 +1174,7 @@
     });
 
     $('camStart').addEventListener('click', function () { startCamera(CAM.savedDeviceId()); });
+    $('camDiag').addEventListener('click', cameraDiagnose);
     $('camSelect').addEventListener('change', function (e) { startCamera(e.target.value).then(focusScan); });
     S.photoMode = lsGet('iade.fotoModu', 'paket');
     S.photoDelay = lsGet('iade.fotoGecikme', 2);
