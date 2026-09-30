@@ -29,6 +29,8 @@ def main(out, offline=False):
         if src in CDN and not offline:
             return '<script src="%s"></script>' % CDN[src]
         code = (ROOT / src).read_text(encoding='utf-8').replace('</script', '<\\/script')
+        # Küçültülmüş kütüphanelerdeki ham kontrol karakterlerini (string içindeki) \\uXXXX kaçışına çevir
+        code = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', lambda m: '\\u%04x' % ord(m.group(0)), code)
         return '<script>\n%s\n</script>' % code
 
     body = re.sub(r'<script src="([^"]+)"></script>', script, body)
