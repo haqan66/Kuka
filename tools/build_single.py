@@ -18,6 +18,15 @@ CDN = {
 }
 
 
+def esc_char(m):
+    # Kütüphane kodundaki ham kontrol ve ASCII dışı karakterleri \\uXXXX kaçışıyla yaz
+    c = ord(m.group(0))
+    if c > 0xFFFF:
+        c -= 0x10000
+        return '\\u%04x\\u%04x' % (0xD800 + (c >> 10), 0xDC00 + (c & 0x3FF))
+    return '\\u%04x' % c
+
+
 def main(out, offline=False):
     html = (ROOT / 'index.html').read_text(encoding='utf-8')
     title = re.search(r'<title>.*?</title>', html).group(0)
@@ -29,8 +38,8 @@ def main(out, offline=False):
         if src in CDN and not offline:
             return '<script src="%s"></script>' % CDN[src]
         code = (ROOT / src).read_text(encoding='utf-8').replace('</script', '<\\/script')
-        # Küçültülmüş kütüphanelerdeki ham kontrol karakterlerini (string içindeki) \\uXXXX kaçışına çevir
-        code = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', lambda m: '\\u%04x' % ord(m.group(0)), code)
+        if src.startswith('vendor/'):
+            code = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\U0010ffff]', esc_char, code)
         return '<script>\n%s\n</script>' % code
 
     body = re.sub(r'<script src="([^"]+)"></script>', script, body)
