@@ -28,7 +28,10 @@ kamera çalışır.
 
 ### Kamera açılmıyorsa
 
-- **Claude sayfasında** canlı kamera hiç açılmaz (platform engeli). Bilgisayar sürümünü kullanın.
+- **Claude sayfasında** canlı kamera hiç açılmaz; izin bile sorulmaz (platform engeli). Kamera alanındaki
+  **Bilgisayar sürümünü indir** düğmesiyle tek dosya sürümü indirip çift tıklayarak açın. Artifact yayınlanırken
+  çevrimdışı dosya `iade-kabul-bilgisayar.html` adıyla sayfanın yanına eklenmelidir.
+- Kamera alanındaki **Kamera tanılama** düğmesi nedeni ve önerilen çözümü gösterir.
 - **İzin engelli:** adres çubuğunun solundaki simge → Kamera → *İzin ver*, sonra sayfayı yenileyin.
 - **Windows:** Ayarlar → Gizlilik ve güvenlik → Kamera → *Kamera erişimi* ve *Masaüstü uygulamalarının kameraya
   erişmesine izin ver* açık olmalı.

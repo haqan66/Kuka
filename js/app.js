@@ -941,7 +941,8 @@
       var advice;
       if (CAM.isReady()) advice = 'Kamera çalışıyor.';
       else if (inArtifact() || inFrame() || location.protocol === 'blob:' || location.protocol === 'data:') {
-        advice = 'Sayfa bir önizleme/Claude sayfası içinde açılmış; burada kamera engellenir. Dosyayı bilgisayara indirin ve ' +
+        advice = 'Sayfa bir önizleme/Claude sayfası içinde açılmış; burada kamera engellenir. ' +
+          (inArtifact() ? '"Bilgisayar sürümünü indir" düğmesiyle dosyayı indirin, ' : 'Dosyayı bilgisayara indirin, ') +
           'Dosya Gezgini\'nden çift tıklayarak açın. Adres çubuğu file:/// ile başlamalı.';
       } else if (!window.isSecureContext) {
         advice = 'Adres güvenli değil (http). Dosyayı çift tıklayarak (file:///) açın.';
@@ -973,8 +974,8 @@
     var tail = ' Kamera açılana kadar fotoğraflar dosyadan/telefon kamerasından eklenir.' +
       (name ? ' [' + name + ']' : '');
     if (inArtifact()) {
-      return 'Claude sayfasında canlı kamera kullanılamaz (izin istenmeden engellenir). Canlı kamera için ' +
-        'programın bilgisayar sürümünü (iade-kabul.html) Chrome veya Edge ile açın.' + tail;
+      return 'Claude sayfasında canlı kamera kullanılamaz; tarayıcı izin bile sormadan engeller. Canlı kamera için ' +
+        '"Bilgisayar sürümünü indir"e basın, inen dosyayı çift tıklayarak açın.' + tail;
     }
     if (inFrame()) {
       return 'Sayfa bir önizleme içinde açılmış; kamera burada engellenir. Dosyayı bilgisayara indirip çift tıklayarak açın ' +
@@ -1175,6 +1176,27 @@
 
     $('camStart').addEventListener('click', function () { startCamera(CAM.savedDeviceId()); });
     $('camDiag').addEventListener('click', cameraDiagnose);
+    // Claude sayfasında: canlı kamera için çift tıklanıp açılan bilgisayar sürümünü indir
+    $('camGetOffline').hidden = !inArtifact();
+    $('camGetOffline').addEventListener('click', function () {
+      var btn = $('camGetOffline');
+      btn.disabled = true;
+      fetch('iade-kabul-bilgisayar.html').then(function (r) {
+        if (!r.ok) throw new Error('dosya bulunamadı');
+        return r.blob();
+      }).then(function (b) {
+        return saveFile(b, 'iade-kabul.html');
+      }).then(function () {
+        dialog({
+          title: 'Bilgisayar sürümü', narrow: true,
+          html: '<ol><li>İndirilen <b>iade-kabul.html</b> dosyasını Dosya Gezgini → İndirilenler klasöründe bulun.</li>' +
+            '<li>Çift tıklayın (Chrome veya Edge ile açılır).</li><li>Kamera izni sorulunca <b>İzin ver</b> deyin.</li>' +
+            '<li>Sipariş Excel\'ini orada yeniden yükleyin. Bu sayfadaki kayıtlar oraya taşınmaz; burada aldığınız iadelerin Excel\'ini önce buradan indirin.</li></ol>',
+        });
+      }).catch(function (err) {
+        setMsg('Bilgisayar sürümü indirilemedi: ' + err.message, 'err');
+      }).then(function () { btn.disabled = false; });
+    });
     $('camSelect').addEventListener('change', function (e) { startCamera(e.target.value).then(focusScan); });
     S.photoMode = lsGet('iade.fotoModu', 'paket');
     S.photoDelay = lsGet('iade.fotoGecikme', 2);
