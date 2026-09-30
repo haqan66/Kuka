@@ -74,9 +74,28 @@
                 <span id="camOffText">Kamera kapalı</span>
                 <button id="camStart" class="btn">Kamerayı Aç</button>
               </div>
+              <div id="countdown" class="countdown" hidden></div>
               <div id="flash" class="flash"></div>
             </div>
-            <label class="check"><input type="checkbox" id="autoPhoto" checked> Onaylarken otomatik fotoğraf çek</label>
+            <div class="set-row">
+              <span>Otomatik fotoğraf</span>
+              <div class="seg compact" id="photoMode">
+                <button data-v="paket">Paket</button>
+                <button data-v="urun">Her ürün</button>
+                <button data-v="kapali">Kapalı</button>
+              </div>
+            </div>
+            <div class="set-row">
+              <span>Çekim gecikmesi</span>
+              <div class="seg compact" id="photoDelay">
+                <button data-v="0">0 sn</button>
+                <button data-v="1">1 sn</button>
+                <button data-v="2">2 sn</button>
+                <button data-v="3">3 sn</button>
+              </div>
+            </div>
+            <p class="hint" id="photoModeHint"></p>
+            <label class="check"><input type="checkbox" id="voiceOn" checked> Sesli uyarı ("Tamam", "Bu ürün siparişte yok"…)</label>
             <div class="row gap">
               <button id="genelFoto" class="btn secondary" disabled>Paket fotoğrafı çek</button>
               <label class="btn secondary" id="genelFotoFileLbl">Dosyadan ekle<input type="file" accept="image/*" capture="environment" id="genelFotoFile" hidden></label>
@@ -105,6 +124,7 @@
         <label>Başlangıç <input type="date" id="kayitBas"></label>
         <label>Bitiş <input type="date" id="kayitBit"></label>
         <span class="spacer"></span>
+        <label class="check"><input type="checkbox" id="sadeceUyari"> Sadece uyarılı kayıtlar</label>
         <label class="check"><input type="checkbox" id="embedPhotos" checked> Fotoğrafları Excel'e göm</label>
         <button id="btnExcel" class="btn primary">Excel İndir</button>
         <button id="btnZip" class="btn secondary">Excel + Fotoğraflar (ZIP)</button>

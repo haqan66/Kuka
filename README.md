@@ -26,7 +26,7 @@ yapılır.
 |---|---|
 | 1 | Kargo poşetindeki barkod okutulur. Program **Kampanya Kodu** (kargo kodu), **Sipariş Numarası**, **Sipariş Kodu** veya **Sipariş ID** ile eşleştirir. Barkod okunmazsa sipariş no ya da müşteri adı yazılabilir. Sipariş No, isim soyisim, kargo takip no, kargo firması, fatura no/tarihi, sipariş tarihi, kargoya son teslim tarihi, sipariş durumu ve teslim/iptal tarihi gösterilir. |
 | 2 | Ürün barkodu okutulur **veya** "Gelen adet" kutusuna adet yazılıp **Onayla** denir. Eşleştirme Sentos barkodu, ürün/platform adındaki barkodlar, model kodu ve stok kodu ile yapılır (UPC/EAN baştaki 0 farkı tolere edilir). Siparişte olmayan barkod okutulursa hangi ürüne ait olduğu seçilebilir; barkod hatırlanır. |
-| 2-1 | Onay anında kamera otomatik fotoğraf çeker. Fotoğrafın altına tarih/saat, personel, sipariş no, kargo no ve ürün adı basılır. Ek fotoğraf ve paket (genel) fotoğrafı da çekilebilir. Kamera yoksa dosyadan fotoğraf eklenir. |
+| 2-1 | **Otomatik fotoğraf** (sağ panel): *Paket* modunda sipariş açılınca paketin tek fotoğrafı, *Her ürün* modunda her okutma/onayda ürün fotoğrafı çekilir; *Kapalı* modunda elle çekilir. **Çekim gecikmesi** (0–3 sn) boyunca kamerada geri sayım görünür, ürünü/paketi yerleştirmeye zaman kalır. Fotoğrafın altına tarih/saat, personel, sipariş no, kargo no ve ürün adı basılır. Kamera yoksa dosyadan fotoğraf eklenir. |
 | 3 | Her kalem için durum seçilir: **Yeniden Satılabilir** veya **İmha**. Sağ paneldeki "Okutulan ürünün durumu" seçimi okutulan ürünlere otomatik uygulanır. Aynı üründen farklı durumlar için "1 adet ayır" kullanılır. |
 | 4 | **Ön İzleme ve Onay (F2)**: tüm kalemler, adetler, durumlar, fotoğraflar ve tutarlar gösterilir. Durumu seçilmemiş kalem varsa onay verilemez; eksik gelen ürünler ve fotoğrafsız kalemler uyarı olarak listelenir. "Kontrol ettim" işaretlenip kaydedilir. |
 | 5 | **İade Kayıtları** sekmesinden **Excel İndir** veya **Excel + Fotoğraflar (ZIP)**. |
@@ -45,6 +45,19 @@ Fotoğraf Dosyaları · Fotoğraf (küçük resim) · Not
 
 **Fiyat notu:** Sentos çıktısındaki "Birim Fiyat" KDV hariç tutardır (KDV matrahlarıyla birebir tutuyor). Ürünün KDV
 oranı, siparişteki %1/%10/%20 KDV matrahları ile eşleştirilerek bulunur ve KDV dahil fiyat buna göre hesaplanır.
+
+## Uyarılar (pencere açılmaz)
+
+Akışı durdurmamak için sorunlar pencere yerine ekranda kırmızı uyarı, hata sesi ve **sesli uyarı** ile bildirilir:
+
+- "Sipariş bulundu. 3 ürün", "Tamam", "Tamam. Tüm ürünler geldi", "Kaydedildi"
+- "Sipariş adedi aşıldı" – ürün yine eklenir, kalemde **Fazla** yazar
+- "Dikkat. Bu sipariş daha önce iade alındı" – yeni iade olarak devam edilir; üstte **Önceki kaydı düzenle** düğmesi çıkar
+- "Bu ürün siparişte yok", "Sipariş bulunamadı", ön izlemede "Eksik bir ürün"
+
+**İade Kayıtları** sekmesinde uyarılı kayıtlar sarı satır ve *Eksik / Fazla / Tekrar iade / Fotoğrafsız* etiketleriyle
+gösterilir; "Sadece uyarılı kayıtlar" ile süzülüp **Düzenle** ile düzeltilebilir. Sesli uyarı sağ panelden kapatılabilir
+(Windows'ta Türkçe ses paketi yüklüyse Türkçe okunur).
 
 ## Kısayollar
 
