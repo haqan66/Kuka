@@ -11,6 +11,13 @@ veriler yalnızca kullanılan bilgisayarın tarayıcısında (IndexedDB) saklan�
 3. Sağ üstten **Excel Yükle** ile Sentos'tan alınan sipariş Excel'ini yükleyin. Liste tarayıcıda saklanır;
    yeni sipariş dosyası geldiğinde tekrar yükleyip "Mevcut listeye ekle" diyebilirsiniz.
 
+### claude.ai üzerinde (Artifact)
+
+`python3 tools/build_single.py iade-kabul.html` uygulamayı tek bir HTML dosyasına paketler (kütüphaneler cdnjs'den
+yüklenir). Bu dosya claude.ai'de Artifact olarak yayınlanabilir. Artifact içinde canlı kamera açılmaz: onay anında
+fotoğraf seçme penceresi açılır (telefonda doğrudan kamera uygulaması açılır). Excel/ZIP indirmeleri kaydetme onayı ile
+yapılır.
+
 > Barkod okuyucu klavye gibi çalışır (okutunca sonuna Enter ekler). Ek bir ayar gerekmez.
 
 ## İş akışı

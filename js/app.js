@@ -378,8 +378,12 @@
         renderDraft(itemIdx);
         beep('ok');
         var m = '✓ ' + it.ad + ' – ' + qty + ' adet onaylandı (' + (got + qty) + '/' + it.adet + ')';
-        if (pid === null) setMsg(m + ' · Kamera kapalı, fotoğraf çekilmedi!', 'warn');
-        else setMsg(m, 'ok');
+        if (pid === null) {
+          // Canlı kamera yok: telefonda kamera uygulamasını, bilgisayarda dosya seçimini aç
+          setMsg(m + ' · Canlı kamera yok, fotoğrafı seçin veya çekin.', 'warn');
+          pendingEntryPhoto = { itemIdx: itemIdx, entryId: e.id };
+          $('entryFotoFile').click();
+        } else setMsg(m, 'ok');
       });
     });
   }
@@ -678,6 +682,25 @@
     });
   }
 
+  // Dosya kaydet: claude.ai Artifact içinde "downloads" yeteneği, normal tarayıcıda indirme bağlantısı
+  var downloadsCap = null;
+  function saveFile(blob, name) {
+    var c = window.claude;
+    var get = c && typeof c.use === 'function'
+      ? (downloadsCap ? Promise.resolve(downloadsCap) : c.use('downloads').then(function (d) { downloadsCap = d; return d; }))
+      : Promise.resolve(null);
+    return get.then(function (d) {
+      if (!d) { EX.download(blob, name); return; }
+      return d.save({ filename: name, data: blob }).then(function () {
+        setMsg('✓ ' + name + ' kaydedildi', 'ok');
+      }, function (err) {
+        if (err && err.code === 'declined') setMsg('Kaydetme iptal edildi', 'warn');
+        else if (err && err.code === 'rate_limited') setMsg('Önceki kaydetme onayı hâlâ açık, onu tamamlayın.', 'warn');
+        else throw new Error('Dosya kaydedilemedi (' + ((err && err.code) || 'bilinmeyen hata') + ')');
+      });
+    });
+  }
+
   // ---------- kayıtlar sekmesi ----------
   function filteredRecords() {
     var q = ($('kayitAra').value || '').toLocaleLowerCase('tr-TR').trim();
@@ -741,8 +764,8 @@
       String(d.getHours()).padStart(2, '0') + String(d.getMinutes()).padStart(2, '0');
     var name = 'Iade_Raporu_' + stamp + '.xlsx';
     EX.buildExcel(list, { embedPhotos: $('embedPhotos').checked, getPhoto: DB.getPhoto }).then(function (blob) {
-      if (!withZip) { EX.download(blob, name); return; }
-      return EX.buildZip(list, DB.getPhoto, blob, name).then(function (zip) { EX.download(zip, 'Iade_Raporu_' + stamp + '.zip'); });
+      if (!withZip) return saveFile(blob, name);
+      return EX.buildZip(list, DB.getPhoto, blob, name).then(function (zip) { return saveFile(zip, 'Iade_Raporu_' + stamp + '.zip'); });
     }).catch(function (err) {
       console.error(err);
       dialog({ title: 'Dışa aktarma hatası', narrow: true, html: '<p>' + esc(err.message) + '</p>' });
@@ -792,7 +815,7 @@
     }).catch(function (err) {
       $('camOff').hidden = false;
       var why = err && err.name === 'NotAllowedError' ? 'Kamera izni verilmedi.' : err && err.name === 'NotFoundError' ? 'Kamera bulunamadı.' : 'Kamera açılamadı: ' + (err && err.message);
-      $('camOffText').textContent = why + ' Fotoğraflar dosyadan eklenebilir.';
+      $('camOffText').textContent = why + ' Onayda fotoğraf seçme penceresi açılır; telefonda doğrudan kamera açılır.';
     });
   }
 
@@ -1084,8 +1107,7 @@
     $('dialog').addEventListener('click', function (e) { if (e.target === $('dialog')) closeDialog(null); });
     $('dialogBody').addEventListener('click', function (e) {
       var img = e.target.closest('img[data-pid][data-ctx=view]');
-      if (!img) return;
-      photoURL(img.dataset.pid).then(function (u) { if (u) window.open(u, '_blank'); });
+      if (img) img.classList.toggle('zoom');
     });
 
     // Kısayollar
