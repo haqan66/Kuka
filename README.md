@@ -1,0 +1,63 @@
+# İade Kabul Programı
+
+Kargo ile geri gelen iadeleri barkod okutarak kabul etmek, fotoğraflamak, durumunu (Yeniden Satılabilir / İmha)
+belirlemek ve sonunda Excel raporu almak için tarayıcıda çalışan program. Kurulum veya sunucu gerekmez;
+veriler yalnızca kullanılan bilgisayarın tarayıcısında (IndexedDB) saklanır.
+
+## Çalıştırma
+
+1. Depoyu indirin ve `index.html` dosyasını **Google Chrome** veya **Microsoft Edge** ile açın.
+2. Tarayıcı kamera izni isterse **İzin ver** deyin.
+3. Sağ üstten **Excel Yükle** ile Sentos'tan alınan sipariş Excel'ini yükleyin. Liste tarayıcıda saklanır;
+   yeni sipariş dosyası geldiğinde tekrar yükleyip "Mevcut listeye ekle" diyebilirsiniz.
+
+> Barkod okuyucu klavye gibi çalışır (okutunca sonuna Enter ekler). Ek bir ayar gerekmez.
+
+## İş akışı
+
+| Adım | Yapılan |
+|---|---|
+| 1 | Kargo poşetindeki barkod okutulur. Program **Kampanya Kodu** (kargo kodu), **Sipariş Numarası**, **Sipariş Kodu** veya **Sipariş ID** ile eşleştirir. Barkod okunmazsa sipariş no ya da müşteri adı yazılabilir. Sipariş No, isim soyisim, kargo takip no, kargo firması, fatura no/tarihi, sipariş tarihi, kargoya son teslim tarihi, sipariş durumu ve teslim/iptal tarihi gösterilir. |
+| 2 | Ürün barkodu okutulur **veya** "Gelen adet" kutusuna adet yazılıp **Onayla** denir. Eşleştirme Sentos barkodu, ürün/platform adındaki barkodlar, model kodu ve stok kodu ile yapılır (UPC/EAN baştaki 0 farkı tolere edilir). Siparişte olmayan barkod okutulursa hangi ürüne ait olduğu seçilebilir; barkod hatırlanır. |
+| 2-1 | Onay anında kamera otomatik fotoğraf çeker. Fotoğrafın altına tarih/saat, personel, sipariş no, kargo no ve ürün adı basılır. Ek fotoğraf ve paket (genel) fotoğrafı da çekilebilir. Kamera yoksa dosyadan fotoğraf eklenir. |
+| 3 | Her kalem için durum seçilir: **Yeniden Satılabilir** veya **İmha**. Sağ paneldeki "Okutulan ürünün durumu" seçimi okutulan ürünlere otomatik uygulanır. Aynı üründen farklı durumlar için "1 adet ayır" kullanılır. |
+| 4 | **Ön İzleme ve Onay (F2)**: tüm kalemler, adetler, durumlar, fotoğraflar ve tutarlar gösterilir. Durumu seçilmemiş kalem varsa onay verilemez; eksik gelen ürünler ve fotoğrafsız kalemler uyarı olarak listelenir. "Kontrol ettim" işaretlenip kaydedilir. |
+| 5 | **İade Kayıtları** sekmesinden **Excel İndir** veya **Excel + Fotoğraflar (ZIP)**. |
+
+## Excel çıktısı
+
+"İadeler" sayfasında her ürün kalemi bir satırdır:
+
+İade Tarihi · Personel · Sipariş No · İsim Soyisim · Kargo Takip No · Kargo Firması · Kanal/Mağaza · Fatura No ·
+Fatura Tarihi · Ürün · Barkod · Sipariş Adedi · İade Adedi · Gelmeyen Adet · **Durum** (Yeniden Satılabilir / İmha /
+Gelmedi) · Birim Fatura Fiyatı (KDV Hariç) · KDV % · Birim Fatura Fiyatı (KDV Dahil) · Toplam Fatura Tutarı (KDV Dahil) ·
+Fotoğraf Dosyaları · Fotoğraf (küçük resim) · Not
+
+"Özet" sayfasında durum bazında adet ve tutar toplamları bulunur. ZIP içinde Excel ile birlikte fotoğraflar
+`fotograflar/<SiparişNo>/` klasörlerinde, Excel'deki dosya adlarıyla yer alır.
+
+**Fiyat notu:** Sentos çıktısındaki "Birim Fiyat" KDV hariç tutardır (KDV matrahlarıyla birebir tutuyor). Ürünün KDV
+oranı, siparişteki %1/%10/%20 KDV matrahları ile eşleştirilerek bulunur ve KDV dahil fiyat buna göre hesaplanır.
+
+## Kısayollar
+
+- `F2` – Ön izleme ve onay
+- `F6` / `F7` – Son eklenen kalemi Yeniden Satılabilir / İmha yap
+- Odak başka yerdeyken okutulan barkod otomatik olarak okutma kutusuna gider.
+
+## Veriler ve yedek
+
+- Sipariş listesi, iade kayıtları ve fotoğraflar tarayıcının yerel veritabanında tutulur; sayfa kapansa da kaybolmaz,
+  yarım kalan iade de geri yüklenir.
+- Tarayıcı verilerini temizlemek kayıtları siler. Düzenli olarak **Excel + Fotoğraflar (ZIP)** alın.
+- Müşteri bilgisi içeren sipariş Excel'lerini bu depoya eklemeyin (`.gitignore` `*.xlsx` dosyalarını hariç tutar).
+
+## Dosyalar
+
+- `index.html`, `css/app.css` – arayüz
+- `js/parser.js` – Sentos Excel çözümleyici (ürün, barkod, adet, fiyat, KDV)
+- `js/app.js` – okutma, onay, ön izleme ve kayıt akışı
+- `js/camera.js` – kamera ve fotoğraf
+- `js/export.js` – Excel ve ZIP çıktısı
+- `js/db.js` – yerel veritabanı
+- `vendor/` – SheetJS (okuma), ExcelJS (yazma), JSZip
