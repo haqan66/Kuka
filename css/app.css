@@ -214,6 +214,7 @@ main { padding: 16px; }
 .video-wrap { position: relative; background: var(--video-bg); border-radius: 8px; overflow: hidden; aspect-ratio: 4 / 3; }
 .video-wrap video { width: 100%; height: 100%; object-fit: cover; display: block; }
 .cam-off { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 10px; align-items: center; justify-content: center; color: var(--video-ink); text-align: center; padding: 12px; }
+#camOffText { font-size: 13px; line-height: 1.4; max-height: 100%; overflow-y: auto; }
 .flash { position: absolute; inset: 0; background: var(--card); opacity: 0; pointer-events: none; transition: opacity .35s; }
 .flash.on { opacity: .8; transition: none; }
 .countdown {

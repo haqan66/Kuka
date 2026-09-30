@@ -20,6 +20,21 @@ yapılır.
 
 > Barkod okuyucu klavye gibi çalışır (okutunca sonuna Enter ekler). Ek bir ayar gerekmez.
 
+### Tek dosya bilgisayar sürümü (önerilen, canlı kamera için)
+
+`python3 tools/build_single.py --offline iade-kabul.html` bütün kütüphaneleri içine gömülü tek bir `iade-kabul.html`
+üretir. Dosyayı depo bilgisayarına kopyalayıp **Chrome/Edge ile çift tıklayarak** açın; internet gerekmez ve canlı
+kamera çalışır.
+
+### Kamera açılmıyorsa
+
+- **Claude sayfasında** canlı kamera hiç açılmaz (platform engeli). Bilgisayar sürümünü kullanın.
+- **İzin engelli:** adres çubuğunun solundaki simge → Kamera → *İzin ver*, sonra sayfayı yenileyin.
+- **Windows:** Ayarlar → Gizlilik ve güvenlik → Kamera → *Kamera erişimi* ve *Masaüstü uygulamalarının kameraya
+  erişmesine izin ver* açık olmalı.
+- **Kamera meşgul:** Teams, Zoom, WhatsApp veya Kamera uygulamasını kapatıp **Kamerayı Aç**'a basın.
+- Program hatanın nedenini kamera alanında yazar.
+
 ## İş akışı
 
 | Adım | Yapılan |

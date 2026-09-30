@@ -24,8 +24,10 @@
         : { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
     };
     return navigator.mediaDevices.getUserMedia(constraints).catch(function (err) {
-      if (deviceId) return navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      throw err;
+      // İzin reddi dışındaki hatalarda (kayıtlı kamera çıkarılmış, çözünürlük desteklenmiyor,
+      // kamera meşgul) en sade istekle bir kez daha dene
+      if (err && (err.name === 'NotAllowedError' || err.name === 'SecurityError')) throw err;
+      return navigator.mediaDevices.getUserMedia({ video: true, audio: false });
     }).then(function (s) {
       stream = s;
       video.srcObject = s;

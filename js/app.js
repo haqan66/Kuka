@@ -910,9 +910,37 @@
       }).join('');
     }).catch(function (err) {
       $('camOff').hidden = false;
-      var why = err && err.name === 'NotAllowedError' ? 'Kamera izni verilmedi.' : err && err.name === 'NotFoundError' ? 'Kamera bulunamadı.' : 'Kamera açılamadı: ' + (err && err.message);
-      $('camOffText').textContent = why + ' Onayda fotoğraf seçme penceresi açılır; telefonda doğrudan kamera açılır.';
+      $('camOffText').textContent = cameraHelp(err);
     });
+  }
+
+  // claude.ai Artifact içinde mi çalışıyoruz? (orada canlı kamera tarayıcı tarafından engellenir)
+  function inArtifact() { return !!(window.claude && typeof window.claude.use === 'function'); }
+
+  function cameraHelp(err) {
+    var name = err && err.name;
+    var tail = ' Kamera açılana kadar fotoğraflar dosyadan/telefon kamerasından eklenir.';
+    if (inArtifact()) {
+      return 'Claude sayfasında canlı kamera kullanılamaz (izin istenmeden engellenir). Canlı kamera için ' +
+        'programın bilgisayar sürümünü (iade-kabul.html) Chrome veya Edge ile açın.' + tail;
+    }
+    if (!window.isSecureContext || !navigator.mediaDevices) {
+      return 'Sayfa güvenli olmayan bir adresten açıldı; tarayıcı kamerayı kapatıyor. Dosyayı çift tıklayarak ' +
+        '(file://) ya da https adresinden açın.' + tail;
+    }
+    if (name === 'NotAllowedError' || name === 'SecurityError') {
+      return 'Kamera izni engelli. Adres çubuğunun solundaki simgeye tıklayıp Kamera → İzin ver seçin ve sayfayı yenileyin. ' +
+        'Sorun sürerse Windows Ayarlar → Gizlilik ve güvenlik → Kamera bölümünde "Kamera erişimi" ve ' +
+        '"Masaüstü uygulamalarının kameraya erişmesine izin ver" açık olmalı.' + tail;
+    }
+    if (name === 'NotReadableError' || name === 'TrackStartError' || name === 'AbortError') {
+      return 'Kamera başka bir programda açık olabilir (Teams, Zoom, WhatsApp, Kamera uygulaması). O programı kapatıp ' +
+        '"Kamerayı Aç"a basın. USB kamerayı çıkarıp takmak da işe yarar.' + tail;
+    }
+    if (name === 'NotFoundError' || name === 'OverconstrainedError') {
+      return 'Kamera bulunamadı. USB kablosunu kontrol edip "Kamerayı Aç"a basın.' + tail;
+    }
+    return 'Kamera açılamadı (' + (name || '') + ' ' + ((err && err.message) || '') + ').' + tail;
   }
 
   function viewPhoto(pid, ctx, owner) {
