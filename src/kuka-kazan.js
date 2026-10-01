@@ -7830,6 +7830,11 @@ class as {
   }
 }
 const be = new as();
+// Çılgınlık Modu ayarları
+const FRENZY_CHARGE_MAX = 6; // kaç isabette dolar
+const FRENZY_DURATION = 8; // saniye
+const FRENZY_SCORE_MUL = 2; // puan çarpanı
+const FRENZY_TIME_SCALE = 1.45; // oyun hızı (top daha çabuk sonuçlanır)
 class ls {
   listItems() {
     return [
@@ -8283,7 +8288,9 @@ const eo = 20,
         a = Math.max(1, Math.floor(e.currentLevel || 1));
       this.startLevel(Math.min(a, o));
     }
-    exit() {}
+    exit() {
+      this.resetFrenzy();
+    }
     startLevel(e) {
       this.beginLevel(E.loadLevel(e));
     }
@@ -8300,6 +8307,7 @@ const eo = 20,
         this.particles.clear(),
         this.floatingText.clear(),
         (this.shotsLeft = e.shots),
+        this.resetFrenzy(),
         (this.levelEnded = !1),
         (this.allKukasBonusGiven = !1),
         (this.laneMultiplier = 1),
@@ -8557,7 +8565,7 @@ const eo = 20,
           fire: ["#ff8a3d", "#ffd24a", "#ff4d2e"],
           ice: ["#bdeeff", "#ffffff", "#8fd8ff"],
         },
-        a = be.multiplier >= 2;
+        a = be.multiplier >= 2 || this.frenzyTimer > 0;
       this.particles.spawnBurst(e.pos.x, e.pos.y, a ? 2 : 1, {
         colors: a ? ["#ffd24a", "#ff8a3d", "#ff4d2e"] : o[e.type],
         speed: [4, 18],
@@ -8587,7 +8595,7 @@ const eo = 20,
         return;
       }
       this.flightHadHit = !0;
-      const o = be.registerHit(),
+      const o = (this.addFrenzyCharge(), be.registerHit()),
         a = o * this.applyDoublePoints() * ye.selectedSpec.scoreMul * this.laneMultiplier,
         l = F.add(e.score, a);
       if (
@@ -8630,7 +8638,7 @@ const eo = 20,
     }
     resolveHoleHit(e) {
       ((this.flightHadHit = !0), this.flightHits++);
-      const o = be.registerHit(),
+      const o = (this.addFrenzyCharge(), be.registerHit()),
         a = e.swish ? 1.5 : 1,
         l = e.sequenceBonus ? 2 : 1,
         n = o * this.applyDoublePoints() * ye.selectedSpec.scoreMul * a * l * this.laneMultiplier,
@@ -9133,8 +9141,106 @@ const eo = 20,
         l = o[(a + e + o.length) % o.length];
       (ye.selectBall(l), this.throwCtl.prepareNextBall(l), z.play("button"));
     }
+
+    // ------------------------------------------------------------------
+    // ÇILGINLIK MODU: isabetler göstergeyi doldurur; dolunca birkaç saniye
+    // boyunca atışlar hak harcamaz, puan katlanır, oyun ve müzik hızlanır.
+    // Oyun belli bir süre sonra durağan/sıkıcı geliyordu; bu, her bölüme
+    // tempo değişimi ve "şimdi hızlı oyna" anları getirir.
+    // ------------------------------------------------------------------
+    resetFrenzy() {
+      ((this.frenzyCharge = 0), (this.frenzyTimer = 0), (this.frenzyFlash = 0), this.setMusicTempo(!1));
+    }
+    addFrenzyCharge() {
+      if (this.levelEnded || this.frenzyTimer > 0) return;
+      ((this.frenzyCharge = (this.frenzyCharge || 0) + 1), (this.frenzyFlash = 0.35));
+      this.frenzyCharge >= FRENZY_CHARGE_MAX && this.startFrenzy();
+    }
+    startFrenzy() {
+      ((this.frenzyCharge = 0),
+        (this.frenzyTimer = FRENZY_DURATION),
+        (this.shakeTimer = 0.3),
+        (this.shakeIntensity = 14),
+        z.play("bigwin"),
+        pe.play("win"),
+        this.setMusicTempo(!0),
+        this.particles.spawnBurst(c / 2, b * 0.45, 70, {
+          colors: ["#ffd24a", "#ff8a3d", "#ff4d2e", "#ffffff"],
+          speed: [180, 560],
+          size: [3, 8],
+          life: [0.6, 1.2],
+        }),
+        this.floatingText.spawn(c / 2, b * 0.4, [
+          { text: "ÇILGINLIK!", color: "#ffd24a", size: 52 },
+          { text: `${FRENZY_DURATION} SN · ÜCRETSİZ ATIŞ · x${FRENZY_SCORE_MUL} PUAN`, color: "#ffffff", size: 20 },
+        ], { life: 1.6 }));
+    }
+    updateFrenzy(e) {
+      if ((this.frenzyFlash > 0 && (this.frenzyFlash = Math.max(0, this.frenzyFlash - e)), !(this.frenzyTimer > 0)))
+        return;
+      if (this.levelEnded) {
+        this.resetFrenzy();
+        return;
+      }
+      const o = Math.ceil(this.frenzyTimer);
+      ((this.frenzyTimer = Math.max(0, this.frenzyTimer - e)),
+        Math.ceil(this.frenzyTimer) !== o && this.frenzyTimer > 0 && this.frenzyTimer <= 3 && z.play("coin"),
+        this.frenzyTimer <= 0 &&
+          (this.setMusicTempo(!1),
+          this.floatingText.spawn(c / 2, b * 0.42, [{ text: "Çılgınlık bitti", color: "#ffffff", size: 22 }])));
+    }
+    setMusicTempo(e) {
+      const o = z.constructor;
+      o && "EIGHTH" in o && (o.EIGHTH = e ? 0.13 : 0.2);
+    }
+    renderFrenzyMeter(e) {
+      const o = 10,
+        a = 432,
+        l = 128,
+        n = 26,
+        i = this.frenzyTimer > 0,
+        s = i ? this.frenzyTimer / FRENZY_DURATION : Math.min(1, (this.frenzyCharge || 0) / FRENZY_CHARGE_MAX);
+      (e.save(), m(e, o, a, l, n, 13), (e.fillStyle = "rgba(10,6,24,0.82)"), e.fill());
+      if (s > 0) {
+        m(e, o + 3, a + 3, Math.max(14, (l - 6) * s), n - 6, 10);
+        const r = e.createLinearGradient(o, 0, o + l, 0);
+        (r.addColorStop(0, "#ffd24a"), r.addColorStop(1, "#ff4d2e"), (e.fillStyle = r), e.fill());
+      }
+      ((e.lineWidth = 2.5),
+        (e.strokeStyle = i || this.frenzyFlash > 0 ? "#ffd24a" : p(v.tentGold, 0.8)),
+        m(e, o, a, l, n, 13),
+        e.stroke(),
+        P(e, i ? `ÇILGINLIK ${Math.ceil(this.frenzyTimer)}` : "🔥 ÇILGINLIK", o + l / 2, a + n / 2 + 1, {
+          size: 13,
+          color: "#ffffff",
+          weight: 900,
+        }),
+        e.restore());
+    }
+    renderFrenzyGlow(e) {
+      if (!(this.frenzyTimer > 0) || this.levelEnded) return;
+      const o = 0.5 + 0.5 * Math.sin(this.time * 10),
+        a = Math.min(1, this.frenzyTimer / 0.6);
+      e.save();
+      const l = e.createRadialGradient(c / 2, b * 0.45, b * 0.32, c / 2, b * 0.45, b * 0.75);
+      (l.addColorStop(0, "rgba(255,90,30,0)"),
+        l.addColorStop(1, `rgba(255,${Math.round(90 + 60 * o)},30,${(0.28 + 0.22 * o) * a})`),
+        (e.fillStyle = l),
+        e.fillRect(0, 0, c, b),
+        (e.lineWidth = 10 + 6 * o),
+        (e.strokeStyle = `rgba(255,${Math.round(140 + 80 * o)},40,${0.85 * a})`),
+        e.strokeRect(5, 5, c - 10, b - 10),
+        P(e, `🔥 ÇILGINLIK ${Math.ceil(this.frenzyTimer)} 🔥`, c / 2, 1050, {
+          size: 34 + 4 * o,
+          color: "#ffd24a",
+          weight: 900,
+          outline: "#7a1c00",
+          outlineWidth: 7,
+        }),
+        e.restore());
+    }
     applyDoublePoints() {
-      const e = this.effects.scoreMul;
+      const e = this.effects.scoreMul * (this.frenzyTimer > 0 ? FRENZY_SCORE_MUL : 1);
       return this.doubleArmed ? ((this.doubleArmed = !1), (this.powerUpFlash = 1), 2 * e) : e;
     }
     triggerLose() {
@@ -9149,7 +9255,8 @@ const eo = 20,
         a = !this.levelEnded && o && this.shotsLeft === 0 && this.throwCtl.ball.vel.y < 0,
         l = a ? 1 : 0;
       this.dramaAmount += (l - this.dramaAmount) * Math.min(1, e * (a ? 7 : 4));
-      const n = 1 - this.dramaAmount * 0.45;
+      const n = (1 - this.dramaAmount * 0.45) * (this.frenzyTimer > 0 ? FRENZY_TIME_SCALE : 1);
+      this.updateFrenzy(e);
       ((e *= n),
         (this.time += e),
         this.throwCtl.update(e),
@@ -9210,7 +9317,9 @@ const eo = 20,
         this.floatingText.render(e),
         this.renderDarkness(e),
         za(e, c, b),
+        this.renderFrenzyGlow(e),
         this.renderHud(e),
+        this.levelEnded || this.renderFrenzyMeter(e),
         !this.levelEnded && (this.renderPowerups(e), this.doubleArmed))
       ) {
         const l = this.throwCtl.ball;
@@ -9916,7 +10025,7 @@ const eo = 20,
           (this.pathTimer = 0),
           this.spawnLaunchEffect(o, a),
           pe.play("tap"),
-          (this.shotsLeft = Math.max(0, this.shotsLeft - 1)),
+          this.frenzyTimer > 0 || (this.shotsLeft = Math.max(0, this.shotsLeft - 1)),
           ce.recordShot(),
           this.bumpStats((n) => n.shotsFired++),
           this.tutorialStep < 3 && (this.tutorialStep = 3));
