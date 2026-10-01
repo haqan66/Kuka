@@ -40,6 +40,8 @@
   function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* yoksay */ } }
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
   function dash(s) { return s ? esc(s) : '<span class="muted">—</span>'; }
+  function pad2(n) { return String(n).padStart(2, '0'); }
+  function dayKey(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
 
   var audioCtx = null;
   function beep(type) {
@@ -122,6 +124,13 @@
     dialogResolve = null;
     if (r) r(value);
     setTimeout(focusScan, 0);
+  }
+  // Tehlikeli işlem onayı: varsayılan (Enter) her zaman güvenli seçenektir
+  function confirmDanger(title, html, okLabel, cancelLabel) {
+    return dialog({
+      title: title, narrow: true, html: html,
+      buttons: [{ label: cancelLabel || 'Vazgeç', value: false, primary: true }, { label: okLabel, value: true, cls: 'danger' }],
+    });
   }
 
   // ---------- fotoğraf ----------
@@ -349,16 +358,10 @@
     var p = Promise.resolve(true);
     if (S.draft && draftHasWork(S.draft) && S.draft.order.uid !== order.uid) {
       beep('warn');
-      p = dialog({
-        title: 'Açık iade onaylanmadı',
-        narrow: true,
-        html: '<p><b>' + esc(S.draft.order.siparisNo) + '</b> (' + esc(S.draft.order.musteri) + ') siparişinin iadesi henüz onaylanmadı.</p>' +
-          '<p>Yeni siparişe (<b>' + esc(order.siparisNo) + '</b>) geçerseniz açık iadedeki okutmalar ve fotoğraflar silinir.</p>',
-        buttons: [
-          { label: 'Açık iadeye dön', value: false, primary: true },
-          { label: 'Sil ve yeni siparişe geç', value: true, cls: 'danger' },
-        ],
-      });
+      p = confirmDanger('Açık iade onaylanmadı',
+        '<p><b>' + esc(S.draft.order.siparisNo) + '</b> (' + esc(S.draft.order.musteri) + ') siparişinin iadesi henüz onaylanmadı.</p>' +
+        '<p>Yeni siparişe (<b>' + esc(order.siparisNo) + '</b>) geçerseniz açık iadedeki okutmalar ve fotoğraflar silinir.</p>',
+        'Sil ve yeni siparişe geç', 'Açık iadeye dön');
     }
     return p.then(function (ok) {
       if (!ok) return;
@@ -381,13 +384,13 @@
           say('Sipariş bulundu. ' + order.items.length + ' ürün');
           setMsg('✓ Sipariş bulundu: ' + order.siparisNo + ' – ' + order.musteri + '. Şimdi ürün barkodlarını okutun.', 'ok');
         }
-        if (S.photoMode === 'paket') takePackagePhoto(true);
+        if (S.photoMode === 'paket') takePackagePhoto();
       });
     });
   }
 
   // Paket fotoğrafı: ayarlı gecikmeyle genel fotoğraflara eklenir
-  function takePackagePhoto(auto) {
+  function takePackagePhoto() {
     var d = S.draft;
     if (!d) return Promise.resolve();
     return scheduleCapture('Paket fotoğrafı').then(function (pid) {
@@ -467,12 +470,12 @@
     else DB.del('draft');
   }
 
-  function draftPhotoIds(d) {
-    var ids = d.genelFotolar.slice();
+  // Bir taslağın ya da kaydın tüm fotoğraf id'leri
+  function photoIds(d) {
+    var ids = (d.genelFotolar || []).slice();
     d.lines.forEach(function (l) { l.entries.forEach(function (e) { ids = ids.concat(e.photos || []); }); });
     return ids;
   }
-  function recordPhotoIds(r) { return draftPhotoIds(r); }
 
   function deletePhotos(ids) {
     return Promise.all(ids.map(function (id) {
@@ -489,9 +492,9 @@
     var keep = new Set();
     if (d.editingId) {
       var orig = S.returns.find(function (r) { return r.id === d.editingId; });
-      if (orig) recordPhotoIds(orig).forEach(function (id) { keep.add(id); });
+      if (orig) photoIds(orig).forEach(function (id) { keep.add(id); });
     }
-    var drop = draftPhotoIds(d).concat(d.removedPhotos || []).filter(function (id) { return !keep.has(id); });
+    var drop = photoIds(d).concat(d.removedPhotos || []).filter(function (id) { return !keep.has(id); });
     S.draft = null;
     S.lastEntry = null;
     S.unknownCode = null;
@@ -707,8 +710,8 @@
     rec.lines = rec.lines.map(function (l) {
       return { itemIdx: l.itemIdx, entries: l.entries.filter(function (e) { return e.qty > 0; }) };
     });
-    var keep = new Set(recordPhotoIds(rec));
-    var candidates = (d.removedPhotos || []).concat(old ? recordPhotoIds(old) : []).concat(draftPhotoIds(d));
+    var keep = new Set(photoIds(rec));
+    var candidates = (d.removedPhotos || []).concat(old ? photoIds(old) : []).concat(photoIds(d));
     var drop = candidates.filter(function (id, i, a) { return !keep.has(id) && a.indexOf(id) === i; });
     return DB.putReturn(rec).then(function () {
       S.returns = S.returns.filter(function (r) { return r.id !== rec.id; }).concat([rec]);
@@ -732,11 +735,9 @@
   function editRecord(id) {
     var rec = S.returns.find(function (r) { return r.id === id; });
     if (!rec) return Promise.resolve();
-    var go = S.draft && draftHasWork(S.draft) ? dialog({
-      title: 'Açık iade var', narrow: true,
-      html: '<p>Açık iade onaylanmadı. Kaydı düzenlemek için açık iade silinecek.</p>',
-      buttons: [{ label: 'Vazgeç', value: false, primary: true }, { label: 'Sil ve devam et', value: true, cls: 'danger' }],
-    }) : Promise.resolve(true);
+    var go = draftHasWork(S.draft)
+      ? confirmDanger('Açık iade var', '<p>Açık iade onaylanmadı. Kaydı düzenlemek için açık iade silinecek.</p>', 'Sil ve devam et')
+      : Promise.resolve(true);
     return go.then(function (ok) {
       if (!ok) return;
       return discardDraft().then(function () {
@@ -782,8 +783,7 @@
     var q = ($('kayitAra').value || '').toLocaleLowerCase('tr-TR').trim();
     var bas = $('kayitBas').value, bit = $('kayitBit').value;
     return S.returns.filter(function (r) {
-      var day = new Date(r.tamamlanma);
-      var key = day.getFullYear() + '-' + String(day.getMonth() + 1).padStart(2, '0') + '-' + String(day.getDate()).padStart(2, '0');
+      var key = dayKey(new Date(r.tamamlanma));
       if (bas && key < bas) return false;
       if (bit && key > bit) return false;
       if (!q) return true;
@@ -856,8 +856,7 @@
     var btns = [$('btnExcel'), $('btnZip')];
     btns.forEach(function (b) { b.disabled = true; });
     var d = new Date();
-    var stamp = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') + '_' +
-      String(d.getHours()).padStart(2, '0') + String(d.getMinutes()).padStart(2, '0');
+    var stamp = dayKey(d) + '_' + pad2(d.getHours()) + pad2(d.getMinutes());
     var name = 'Iade_Raporu_' + stamp + '.xlsx';
     EX.buildExcel(list, { embedPhotos: $('embedPhotos').checked, getPhoto: DB.getPhoto }).then(function (blob) {
       if (!withZip) return saveFile(blob, name);
@@ -897,6 +896,11 @@
   }
 
   // ---------- kamera ----------
+  var lastCamError = null;
+  // claude.ai Artifact içinde mi / başka sayfanın çerçevesinde mi? (ikisinde de canlı kamera engellenir)
+  function inArtifact() { return !!(window.claude && typeof window.claude.use === 'function'); }
+  function inFrame() { try { return window.self !== window.top; } catch (e) { return true; } }
+
   function startCamera(deviceId) {
     $('camOffText').textContent = 'Kamera açılıyor…';
     return CAM.start(deviceId).then(function () {
@@ -914,9 +918,6 @@
       $('camOffText').textContent = cameraHelp(err);
     });
   }
-
-  var lastCamError = null;
-  function inFrame() { try { return window.self !== window.top; } catch (e) { return true; } }
 
   // Kamera neden açılmıyor: ortamı tek ekranda göster
   function cameraDiagnose() {
@@ -938,24 +939,9 @@
         ['Son hata', err ? (err.name || '') + ' – ' + (err.message || '') : '—'],
         ['Tarayıcı', (navigator.userAgent.match(/(Edg|Chrome|Firefox|Safari)\/[\d.]+/) || [navigator.userAgent])[0]],
       ];
-      var advice;
-      if (CAM.isReady()) advice = 'Kamera çalışıyor.';
-      else if (inArtifact() || inFrame() || location.protocol === 'blob:' || location.protocol === 'data:') {
-        advice = 'Sayfa bir önizleme/Claude sayfası içinde açılmış; burada kamera engellenir. ' +
-          (inArtifact() ? '"Bilgisayar sürümünü indir" düğmesiyle dosyayı indirin, ' : 'Dosyayı bilgisayara indirin, ') +
-          'Dosya Gezgini\'nden çift tıklayarak açın. Adres çubuğu file:/// ile başlamalı.';
-      } else if (!window.isSecureContext) {
-        advice = 'Adres güvenli değil (http). Dosyayı çift tıklayarak (file:///) açın.';
-      } else if (r[0] === 'denied' || (err && err.name === 'NotAllowedError')) {
-        advice = 'İzin engelli. Adres çubuğunun solundaki simge → Kamera → İzin ver → sayfayı yenileyin. ' +
-          'Orada seçenek yoksa Chrome\'da chrome://settings/content/camera adresini açıp engellenenler listesinden silin. ' +
-          'Yine olmuyorsa Windows Ayarlar → Gizlilik ve güvenlik → Kamera → "Masaüstü uygulamalarının kameraya erişmesine izin ver" açık olmalı ' +
-          '(Mac: Sistem Ayarları → Gizlilik ve Güvenlik → Kamera → Google Chrome açık).';
-      } else if (r[1] === 0) {
-        advice = 'Tarayıcı hiç kamera görmüyor. USB kamerayı başka porta takın; Windows Kamera uygulamasında görüntü geliyor mu bakın.';
-      } else if (err && /NotReadable|TrackStart|Abort/.test(err.name)) {
-        advice = 'Kamera başka bir programda açık. Teams/Zoom/WhatsApp/Kamera uygulamasını kapatıp "Kamerayı Aç"a basın.';
-      } else advice = '"Kamerayı Aç"a basın; izin sorulursa İzin ver deyin.';
+      var advice = CAM.isReady() ? 'Kamera çalışıyor.'
+        : r[1] === 0 && !inFrame() ? 'Tarayıcı hiç kamera görmüyor. USB kamerayı başka porta takın; Windows Kamera uygulamasında görüntü geliyor mu bakın.'
+        : cameraHelp(err || (r[0] === 'denied' ? { name: 'NotAllowedError' } : null));
       return dialog({
         title: 'Kamera tanılama',
         narrow: true,
@@ -966,13 +952,11 @@
     }).then(function (v) { if (v === 'retry') startCamera(CAM.savedDeviceId()); });
   }
 
-  // claude.ai Artifact içinde mi çalışıyoruz? (orada canlı kamera tarayıcı tarafından engellenir)
-  function inArtifact() { return !!(window.claude && typeof window.claude.use === 'function'); }
-
   function cameraHelp(err) {
     var name = err && err.name;
     var tail = ' Kamera açılana kadar fotoğraflar dosyadan/telefon kamerasından eklenir.' +
       (name ? ' [' + name + ']' : '');
+    if (!err) return '"Kamerayı Aç"a basın; izin sorulursa İzin ver deyin.';
     if (inArtifact()) {
       return 'Claude sayfasında canlı kamera kullanılamaz; tarayıcı izin bile sormadan engeller. Canlı kamera için ' +
         '"Bilgisayar sürümünü indir"e basın, inen dosyayı çift tıklayarak açın.' + tail;
@@ -986,9 +970,9 @@
         '(file://) ya da https adresinden açın.' + tail;
     }
     if (name === 'NotAllowedError' || name === 'SecurityError') {
-      return 'Kamera izni engelli. Adres çubuğunun solundaki simgeye tıklayıp Kamera → İzin ver seçin ve sayfayı yenileyin. ' +
-        'Sorun sürerse Windows Ayarlar → Gizlilik ve güvenlik → Kamera bölümünde "Kamera erişimi" ve ' +
-        '"Masaüstü uygulamalarının kameraya erişmesine izin ver" açık olmalı.' + tail;
+      return 'Kamera izni engelli. Adres çubuğunun solundaki simgeye tıklayıp Kamera → İzin ver seçin ve sayfayı yenileyin ' +
+        '(ya da chrome://settings/content/camera adresinden engeli kaldırın). Sorun sürerse Windows Ayarlar → Gizlilik ve ' +
+        'güvenlik → Kamera bölümünde "Kamera erişimi" ve "Masaüstü uygulamalarının kameraya erişmesine izin ver" açık olmalı.' + tail;
     }
     if (name === 'NotReadableError' || name === 'TrackStartError' || name === 'AbortError') {
       return 'Kamera başka bir programda açık olabilir (Teams, Zoom, WhatsApp, Kamera uygulaması). O programı kapatıp ' +
@@ -1034,21 +1018,19 @@
     $('personel').value = lsGet('iade.personel', '');
     $('personel').addEventListener('change', function (e) { lsSet('iade.personel', e.target.value.trim()); });
 
-    $('scanInput').addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        e.stopPropagation(); // aynı Enter açılan diyaloğu onaylamasın
-        var v = e.target.value;
-        e.target.value = '';
-        queue = queue.then(function () { return handleScan(v); }).catch(function (err) { console.error(err); setMsg(err.message, 'err'); });
-      }
-    });
-    $('scanBtn').addEventListener('click', function () {
+    // Okutmalar sırayla işlenir (hızlı okutmada araya girmesin)
+    function submitScan() {
       var v = $('scanInput').value;
       $('scanInput').value = '';
-      queue = queue.then(function () { return handleScan(v); });
-      focusScan();
+      queue = queue.then(function () { return handleScan(v); }).catch(function (err) { console.error(err); setMsg(err.message, 'err'); });
+    }
+    $('scanInput').addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      e.stopPropagation(); // aynı Enter açılan diyaloğu onaylamasın
+      submitScan();
     });
+    $('scanBtn').addEventListener('click', function () { submitScan(); focusScan(); });
 
     $('searchResults').addEventListener('click', function (e) {
       var b = e.target.closest('button[data-i]');
@@ -1101,11 +1083,8 @@
         S.lastEntry = { itemIdx: itemIdx, entryId: ne.id };
         saveDraft(); renderDraft(); focusScan();
       } else if (act === 'del') {
-        dialog({
-          title: 'Kalemi sil', narrow: true,
-          html: '<p>' + esc(S.draft.order.items[itemIdx].ad) + ' – ' + entry.qty + ' adet ve fotoğrafları silinsin mi?</p>',
-          buttons: [{ label: 'Vazgeç', value: false, primary: true }, { label: 'Sil', value: true, cls: 'danger' }],
-        }).then(function (ok) {
+        confirmDanger('Kalemi sil', '<p>' + esc(S.draft.order.items[itemIdx].ad) + ' – ' + entry.qty + ' adet ve fotoğrafları silinsin mi?</p>', 'Sil')
+          .then(function (ok) {
           if (!ok) return;
           var line = lineOf(itemIdx);
           line.entries = line.entries.filter(function (x) { return x.id !== entryId; });
@@ -1162,7 +1141,7 @@
     $('genelFoto').addEventListener('click', function () {
       if (!S.draft) return;
       if (!CAM.isReady()) { $('genelFotoFile').click(); return; }
-      takePackagePhoto(false).then(focusScan);
+      takePackagePhoto().then(focusScan);
     });
     $('genelFotoFile').addEventListener('change', function (e) {
       var f = e.target.files[0];
@@ -1203,30 +1182,35 @@
     S.voice = lsGet('iade.sesli', true);
     $('voiceOn').checked = S.voice;
     $('voiceOn').addEventListener('change', function (e) { S.voice = e.target.checked; lsSet('iade.sesli', S.voice); if (S.voice) say('Sesli uyarı açık'); focusScan(); });
+    // Sağ paneldeki seçmeli düğme grupları (fotoğraf modu, gecikme, varsayılan durum)
+    function bindSeg(id, get, set) {
+      function paint() {
+        document.querySelectorAll('#' + id + ' button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === String(get())); });
+      }
+      paint();
+      $(id).addEventListener('click', function (e) {
+        var b = e.target.closest('button');
+        if (!b) return;
+        set(b.dataset.v);
+        paint();
+        focusScan();
+      });
+    }
     var MODE_HINT = {
       paket: 'Sipariş açılınca paketin tek fotoğrafı çekilir. Ürünü masaya/pakete yerleştirmek için gecikme süresini kullanın.',
       urun: 'Her ürün okutulduğunda ya da onaylandığında ayrı fotoğraf çekilir.',
       kapali: 'Otomatik fotoğraf çekilmez; "Paket fotoğrafı çek" veya kalemdeki "Foto" ile elle çekilir.',
     };
-    function paintPhotoSettings() {
-      document.querySelectorAll('#photoMode button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === S.photoMode); });
-      document.querySelectorAll('#photoDelay button').forEach(function (b) { b.classList.toggle('on', +b.dataset.v === S.photoDelay); });
-      $('photoModeHint').textContent = MODE_HINT[S.photoMode] || '';
-    }
-    paintPhotoSettings();
-    $('photoMode').addEventListener('click', function (e) {
-      var b = e.target.closest('button');
-      if (!b) return;
-      S.photoMode = b.dataset.v;
-      lsSet('iade.fotoModu', S.photoMode);
-      paintPhotoSettings(); renderDraft(); focusScan();
+    $('photoModeHint').textContent = MODE_HINT[S.photoMode] || '';
+    bindSeg('photoMode', function () { return S.photoMode; }, function (v) {
+      S.photoMode = v;
+      lsSet('iade.fotoModu', v);
+      $('photoModeHint').textContent = MODE_HINT[v] || '';
+      renderDraft();
     });
-    $('photoDelay').addEventListener('click', function (e) {
-      var b = e.target.closest('button');
-      if (!b) return;
-      S.photoDelay = +b.dataset.v;
+    bindSeg('photoDelay', function () { return S.photoDelay; }, function (v) {
+      S.photoDelay = +v;
       lsSet('iade.fotoGecikme', S.photoDelay);
-      paintPhotoSettings(); focusScan();
     });
     $('orderCard').addEventListener('click', function (e) {
       var b = e.target.closest('button[data-edit-prev]');
@@ -1234,27 +1218,18 @@
     });
 
     S.defaultStatus = lsGet('iade.varsayilanDurum', '');
-    function paintDefault() {
-      document.querySelectorAll('#defaultStatus button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === S.defaultStatus); });
-    }
-    paintDefault();
-    $('defaultStatus').addEventListener('click', function (e) {
-      var b = e.target.closest('button');
-      if (!b) return;
-      S.defaultStatus = b.dataset.v;
-      lsSet('iade.varsayilanDurum', S.defaultStatus);
-      paintDefault();
-      focusScan();
+    bindSeg('defaultStatus', function () { return S.defaultStatus; }, function (v) {
+      S.defaultStatus = v;
+      lsSet('iade.varsayilanDurum', v);
     });
 
     $('btnPreview').addEventListener('click', openPreview);
     $('btnCancel').addEventListener('click', function () {
       if (!S.draft) return;
-      var p = draftHasWork(S.draft) ? dialog({
-        title: 'İadeden vazgeç', narrow: true,
-        html: '<p>Bu siparişte yapılan okutmalar ve çekilen fotoğraflar silinecek' + (S.draft.editingId ? ' (kayıtlı iade değişmeden kalır)' : '') + '.</p>',
-        buttons: [{ label: 'Geri dön', value: false, primary: true }, { label: 'Vazgeç ve sil', value: true, cls: 'danger' }],
-      }) : Promise.resolve(true);
+      var p = draftHasWork(S.draft)
+        ? confirmDanger('İadeden vazgeç', '<p>Bu siparişte yapılan okutmalar ve çekilen fotoğraflar silinecek' +
+          (S.draft.editingId ? ' (kayıtlı iade değişmeden kalır)' : '') + '.</p>', 'Vazgeç ve sil', 'Geri dön')
+        : Promise.resolve(true);
       p.then(function (ok) {
         if (ok) discardDraft().then(function () { setMsg('İade iptal edildi', 'warn'); focusScan(); });
       });
@@ -1276,33 +1251,27 @@
       } else if (b.dataset.del) {
         var r = S.returns.find(function (x) { return x.id === b.dataset.del; });
         if (!r) return;
-        dialog({
-          title: 'Kaydı sil', narrow: true,
-          html: '<p><b>' + esc(r.order.siparisNo) + '</b> – ' + esc(r.order.musteri) + ' iade kaydı ve fotoğrafları kalıcı olarak silinsin mi?</p>',
-          buttons: [{ label: 'Vazgeç', value: false, primary: true }, { label: 'Sil', value: true, cls: 'danger' }],
-        }).then(function (ok) {
+        confirmDanger('Kaydı sil', '<p><b>' + esc(r.order.siparisNo) + '</b> – ' + esc(r.order.musteri) +
+          ' iade kaydı ve fotoğrafları kalıcı olarak silinsin mi?</p>', 'Sil').then(function (ok) {
           if (!ok) return;
-          var inDraft = S.draft ? new Set(draftPhotoIds(S.draft)) : new Set();
+          var inDraft = S.draft ? new Set(photoIds(S.draft)) : new Set();
           return DB.delReturn(r.id).then(function () {
             S.returns = S.returns.filter(function (x) { return x.id !== r.id; });
             if (S.draft && S.draft.editingId === r.id) S.draft.editingId = null;
             renderRecords(); renderOrders(); saveDraft(); renderDraft();
-            return deletePhotos(recordPhotoIds(r).filter(function (id) { return !inDraft.has(id); }));
+            return deletePhotos(photoIds(r).filter(function (id) { return !inDraft.has(id); }));
           });
         });
       }
     });
     $('btnClearAll').addEventListener('click', function () {
-      dialog({
-        title: 'Tüm iade kayıtlarını sil', narrow: true,
-        html: '<p><b>' + S.returns.length + '</b> iade kaydı ve tüm fotoğraflar kalıcı olarak silinecek. Önce Excel/ZIP aldığınızdan emin olun.</p>',
-        buttons: [{ label: 'Vazgeç', value: false, primary: true }, { label: 'Hepsini sil', value: true, cls: 'danger' }],
-      }).then(function (ok) {
+      confirmDanger('Tüm iade kayıtlarını sil', '<p><b>' + S.returns.length +
+        '</b> iade kaydı ve tüm fotoğraflar kalıcı olarak silinecek. Önce Excel/ZIP aldığınızdan emin olun.</p>', 'Hepsini sil').then(function (ok) {
         if (!ok) return;
-        var keep = S.draft ? draftPhotoIds(S.draft) : [];
+        var keep = S.draft ? photoIds(S.draft) : [];
         return DB.clearReturns().then(function () {
           var drop = [];
-          S.returns.forEach(function (r) { drop = drop.concat(recordPhotoIds(r)); });
+          S.returns.forEach(function (r) { drop = drop.concat(photoIds(r)); });
           S.returns = [];
           if (S.draft) { S.draft.editingId = null; saveDraft(); renderDraft(); }
           renderRecords(); renderOrders();
@@ -1322,11 +1291,8 @@
       openOrder(o);
     });
     $('btnClearOrders').addEventListener('click', function () {
-      dialog({
-        title: 'Sipariş listesini temizle', narrow: true,
-        html: '<p>Yüklü ' + S.orders.length + ' sipariş silinecek (iade kayıtları etkilenmez).</p>',
-        buttons: [{ label: 'Vazgeç', value: false, primary: true }, { label: 'Temizle', value: true, cls: 'danger' }],
-      }).then(function (ok) {
+      confirmDanger('Sipariş listesini temizle', '<p>Yüklü ' + S.orders.length +
+        ' sipariş silinecek (iade kayıtları etkilenmez).</p>', 'Temizle').then(function (ok) {
         if (!ok) return;
         S.meta = null;
         setOrders([]);

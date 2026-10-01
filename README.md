@@ -1,101 +1,88 @@
 # İade Kabul Programı
 
 Kargo ile geri gelen iadeleri barkod okutarak kabul etmek, fotoğraflamak, durumunu (Yeniden Satılabilir / İmha)
-belirlemek ve sonunda Excel raporu almak için tarayıcıda çalışan program. Kurulum veya sunucu gerekmez;
-veriler yalnızca kullanılan bilgisayarın tarayıcısında (IndexedDB) saklanır.
+belirlemek ve sonunda Excel raporu almak için tarayıcıda çalışan program. Kurulum veya sunucu gerekmez; veriler
+yalnızca kullanılan bilgisayarın tarayıcısında saklanır.
 
 ## Çalıştırma
 
-1. Depoyu indirin ve `index.html` dosyasını **Google Chrome** veya **Microsoft Edge** ile açın.
-2. Tarayıcı kamera izni isterse **İzin ver** deyin.
-3. Sağ üstten **Excel Yükle** ile Sentos'tan alınan sipariş Excel'ini yükleyin. Liste tarayıcıda saklanır;
-   yeni sipariş dosyası geldiğinde tekrar yükleyip "Mevcut listeye ekle" diyebilirsiniz.
+| Sürüm | Nasıl açılır | Canlı kamera |
+|---|---|---|
+| **Bilgisayar sürümü** (önerilen) | İndirilen `iade-kabul.html` dosyasını Chrome/Edge ile çift tıklayarak açın. İnternet gerekmez. | Var |
+| Claude sayfası | claude.ai Artifact bağlantısından açılır. Kamera alanındaki **Bilgisayar sürümünü indir** ile bilgisayar sürümü indirilir. | Yok (platform engeli); fotoğraf dosyadan/telefon kamerasından eklenir |
+| Geliştirme | Depodaki `index.html` dosyasını açın. | Var |
 
-### claude.ai üzerinde (Artifact)
-
-`python3 tools/build_single.py iade-kabul.html` uygulamayı tek bir HTML dosyasına paketler (kütüphaneler cdnjs'den
-yüklenir). Bu dosya claude.ai'de Artifact olarak yayınlanabilir. Artifact içinde canlı kamera açılmaz: onay anında
-fotoğraf seçme penceresi açılır (telefonda doğrudan kamera uygulaması açılır). Excel/ZIP indirmeleri kaydetme onayı ile
-yapılır.
-
-> Barkod okuyucu klavye gibi çalışır (okutunca sonuna Enter ekler). Ek bir ayar gerekmez.
-
-### Tek dosya bilgisayar sürümü (önerilen, canlı kamera için)
-
-`python3 tools/build_single.py --offline iade-kabul.html` bütün kütüphaneleri içine gömülü tek bir `iade-kabul.html`
-üretir. Dosyayı depo bilgisayarına kopyalayıp **Chrome/Edge ile çift tıklayarak** açın; internet gerekmez ve canlı
-kamera çalışır.
-
-### Kamera açılmıyorsa
-
-- **Claude sayfasında** canlı kamera hiç açılmaz; izin bile sorulmaz (platform engeli). Kamera alanındaki
-  **Bilgisayar sürümünü indir** düğmesiyle tek dosya sürümü indirip çift tıklayarak açın. Artifact yayınlanırken
-  çevrimdışı dosya `iade-kabul-bilgisayar.html` adıyla sayfanın yanına eklenmelidir.
-- Kamera alanındaki **Kamera tanılama** düğmesi nedeni ve önerilen çözümü gösterir.
-- **İzin engelli:** adres çubuğunun solundaki simge → Kamera → *İzin ver*, sonra sayfayı yenileyin.
-- **Windows:** Ayarlar → Gizlilik ve güvenlik → Kamera → *Kamera erişimi* ve *Masaüstü uygulamalarının kameraya
-  erişmesine izin ver* açık olmalı.
-- **Kamera meşgul:** Teams, Zoom, WhatsApp veya Kamera uygulamasını kapatıp **Kamerayı Aç**'a basın.
-- Program hatanın nedenini kamera alanında yazar.
+İlk açılışta kamera izni sorulunca **İzin ver** deyin, sonra sağ üstten **Excel Yükle** ile Sentos sipariş Excel'ini
+yükleyin. Yeni sipariş dosyası geldiğinde tekrar yükleyip "Mevcut listeye ekle" diyebilirsiniz. Barkod okuyucu klavye
+gibi çalışır; ek ayar gerekmez.
 
 ## İş akışı
 
-| Adım | Yapılan |
-|---|---|
-| 1 | Kargo poşetindeki barkod okutulur. Program **Kampanya Kodu** (kargo kodu), **Sipariş Numarası**, **Sipariş Kodu** veya **Sipariş ID** ile eşleştirir. Barkod okunmazsa sipariş no ya da müşteri adı yazılabilir. Sipariş No, isim soyisim, kargo takip no, kargo firması, fatura no/tarihi, sipariş tarihi, kargoya son teslim tarihi, sipariş durumu ve teslim/iptal tarihi gösterilir. |
-| 2 | Ürün barkodu okutulur **veya** "Gelen adet" kutusuna adet yazılıp **Onayla** denir. Eşleştirme Sentos barkodu, ürün/platform adındaki barkodlar, model kodu ve stok kodu ile yapılır (UPC/EAN baştaki 0 farkı tolere edilir). Siparişte olmayan barkod okutulursa hangi ürüne ait olduğu seçilebilir; barkod hatırlanır. |
-| 2-1 | **Otomatik fotoğraf** (sağ panel): *Paket* modunda sipariş açılınca paketin tek fotoğrafı, *Her ürün* modunda her okutma/onayda ürün fotoğrafı çekilir; *Kapalı* modunda elle çekilir. **Çekim gecikmesi** (0–3 sn) boyunca kamerada geri sayım görünür, ürünü/paketi yerleştirmeye zaman kalır. Fotoğrafın altına tarih/saat, personel, sipariş no, kargo no ve ürün adı basılır. Kamera yoksa dosyadan fotoğraf eklenir. |
-| 3 | Her kalem için durum seçilir: **Yeniden Satılabilir** veya **İmha**. Sağ paneldeki "Okutulan ürünün durumu" seçimi okutulan ürünlere otomatik uygulanır. Aynı üründen farklı durumlar için "1 adet ayır" kullanılır. |
-| 4 | **Ön İzleme ve Onay (F2)**: tüm kalemler, adetler, durumlar, fotoğraflar ve tutarlar gösterilir. Durumu seçilmemiş kalem varsa onay verilemez; eksik gelen ürünler ve fotoğrafsız kalemler uyarı olarak listelenir. "Kontrol ettim" işaretlenip kaydedilir. |
-| 5 | **İade Kayıtları** sekmesinden **Excel İndir** veya **Excel + Fotoğraflar (ZIP)**. |
+1. **Kargo barkodu okutulur.** Kampanya Kodu (kargo kodu), Sipariş Numarası, Sipariş Kodu veya Sipariş ID ile eşleşir;
+   barkod okunmazsa sipariş no ya da müşteri adı yazılabilir. Sipariş no, isim soyisim, kargo takip no, kargo firması,
+   fatura no/tarihi, sipariş/kargo tarihleri, sipariş durumu ve teslim/iptal tarihi gösterilir.
+2. **Ürün barkodu okutulur** ya da "Gelen adet" yazılıp **Onayla** denir. Eşleştirme Sentos barkodu, ürün/platform
+   adındaki barkodlar, model kodu ve stok kodu ile yapılır. Siparişte olmayan barkod hangi ürüne ait olduğu seçilerek
+   öğretilebilir.
+3. **Fotoğraf** otomatik çekilir (sağ panel): *Paket* modunda sipariş açılınca tek paket fotoğrafı, *Her ürün* modunda
+   her okutmada ürün fotoğrafı. **Çekim gecikmesi** (0–3 sn) boyunca kamerada geri sayım görünür. Fotoğrafa tarih/saat,
+   personel, sipariş no, kargo no ve ürün adı basılır.
+4. **Durum** seçilir: Yeniden Satılabilir / İmha. "Okutulan ürünün durumu" seçimi okutulan ürünlere otomatik uygulanır;
+   aynı üründen farklı durumlar için "1 adet ayır" kullanılır.
+5. **Ön İzleme ve Onay (F2):** kalemler, adetler, durumlar, fotoğraflar ve tutarlar kontrol edilip kaydedilir.
+   Durumu seçilmemiş kalem varsa kaydedilmez.
+6. **İade Kayıtları** sekmesinden **Excel İndir** veya **Excel + Fotoğraflar (ZIP)**.
+
+## Uyarılar
+
+Akış pencerelerle durdurulmaz; sorunlar kırmızı uyarı, hata sesi ve sesli uyarı ile bildirilir ("Tamam", "Tamam. Tüm
+ürünler geldi", "Sipariş adedi aşıldı", "Bu ürün siparişte yok", "Dikkat. Bu sipariş daha önce iade alındı", "Eksik bir
+ürün", "Kaydedildi"). Fazla okutulan ürün yine eklenir ve "Fazla" diye işaretlenir; daha önce iade alınmış sipariş yeni
+iade olarak açılır ve **Önceki kaydı düzenle** düğmesi çıkar.
+
+**İade Kayıtları** sekmesinde sorunlu kayıtlar *Eksik / Fazla / Tekrar iade / Fotoğrafsız* etiketleriyle gösterilir;
+"Sadece uyarılı kayıtlar" ile süzülüp **Düzenle** ile düzeltilir. Sesli uyarı sağ panelden kapatılabilir (Türkçe okuma
+için bilgisayarda Türkçe ses paketi gerekir).
 
 ## Excel çıktısı
 
-"İadeler" sayfasında her ürün kalemi bir satırdır:
+"İadeler" sayfasında her ürün kalemi bir satırdır: İade Tarihi · Personel · Sipariş No · İsim Soyisim · Kargo Takip No ·
+Kargo Firması · Kanal/Mağaza · Fatura No · Fatura Tarihi · Ürün · Barkod · Sipariş Adedi · İade Adedi · Gelmeyen Adet ·
+**Durum** · Birim Fatura Fiyatı (KDV Hariç) · KDV % · Birim Fatura Fiyatı (KDV Dahil) · Toplam Fatura Tutarı · Fotoğraf
+Dosyaları · Fotoğraf · Not. "Özet" sayfasında durum bazında toplamlar bulunur. ZIP'te fotoğraflar
+`fotograflar/<SiparişNo>/` klasörlerindedir.
 
-İade Tarihi · Personel · Sipariş No · İsim Soyisim · Kargo Takip No · Kargo Firması · Kanal/Mağaza · Fatura No ·
-Fatura Tarihi · Ürün · Barkod · Sipariş Adedi · İade Adedi · Gelmeyen Adet · **Durum** (Yeniden Satılabilir / İmha /
-Gelmedi) · Birim Fatura Fiyatı (KDV Hariç) · KDV % · Birim Fatura Fiyatı (KDV Dahil) · Toplam Fatura Tutarı (KDV Dahil) ·
-Fotoğraf Dosyaları · Fotoğraf (küçük resim) · Not
+Sentos'taki "Birim Fiyat" KDV hariçtir; ürünün KDV oranı siparişin KDV matrahlarıyla eşleştirilerek bulunur.
 
-"Özet" sayfasında durum bazında adet ve tutar toplamları bulunur. ZIP içinde Excel ile birlikte fotoğraflar
-`fotograflar/<SiparişNo>/` klasörlerinde, Excel'deki dosya adlarıyla yer alır.
+## Kamera açılmıyorsa
 
-**Fiyat notu:** Sentos çıktısındaki "Birim Fiyat" KDV hariç tutardır (KDV matrahlarıyla birebir tutuyor). Ürünün KDV
-oranı, siparişteki %1/%10/%20 KDV matrahları ile eşleştirilerek bulunur ve KDV dahil fiyat buna göre hesaplanır.
+Kamera alanındaki **Kamera tanılama** düğmesi nedeni ve çözümü gösterir. Sık nedenler:
 
-## Uyarılar (pencere açılmaz)
-
-Akışı durdurmamak için sorunlar pencere yerine ekranda kırmızı uyarı, hata sesi ve **sesli uyarı** ile bildirilir:
-
-- "Sipariş bulundu. 3 ürün", "Tamam", "Tamam. Tüm ürünler geldi", "Kaydedildi"
-- "Sipariş adedi aşıldı" – ürün yine eklenir, kalemde **Fazla** yazar
-- "Dikkat. Bu sipariş daha önce iade alındı" – yeni iade olarak devam edilir; üstte **Önceki kaydı düzenle** düğmesi çıkar
-- "Bu ürün siparişte yok", "Sipariş bulunamadı", ön izlemede "Eksik bir ürün"
-
-**İade Kayıtları** sekmesinde uyarılı kayıtlar sarı satır ve *Eksik / Fazla / Tekrar iade / Fotoğrafsız* etiketleriyle
-gösterilir; "Sadece uyarılı kayıtlar" ile süzülüp **Düzenle** ile düzeltilebilir. Sesli uyarı sağ panelden kapatılabilir
-(Windows'ta Türkçe ses paketi yüklüyse Türkçe okunur).
+- **Claude sayfasında** canlı kamera hiç açılmaz, izin de sorulmaz → bilgisayar sürümünü kullanın.
+- **İzin engelli** → adres çubuğundaki simge → Kamera → İzin ver (veya `chrome://settings/content/camera`), sayfayı yenileyin.
+- **Windows** → Ayarlar → Gizlilik ve güvenlik → Kamera → "Masaüstü uygulamalarının kameraya erişmesine izin ver" açık olmalı.
+- **Kamera meşgul** → Teams, Zoom, WhatsApp veya Kamera uygulamasını kapatıp **Kamerayı Aç**'a basın.
 
 ## Kısayollar
 
-- `F2` – Ön izleme ve onay
-- `F6` / `F7` – Son eklenen kalemi Yeniden Satılabilir / İmha yap
-- Odak başka yerdeyken okutulan barkod otomatik olarak okutma kutusuna gider.
+`F2` ön izleme ve onay · `F6` / `F7` son eklenen kalemi Yeniden Satılabilir / İmha yap · Odak başka yerdeyken okutulan
+barkod otomatik olarak okutma kutusuna gider.
 
-## Veriler ve yedek
+## Veriler
 
-- Sipariş listesi, iade kayıtları ve fotoğraflar tarayıcının yerel veritabanında tutulur; sayfa kapansa da kaybolmaz,
-  yarım kalan iade de geri yüklenir.
-- Tarayıcı verilerini temizlemek kayıtları siler. Düzenli olarak **Excel + Fotoğraflar (ZIP)** alın.
-- Müşteri bilgisi içeren sipariş Excel'lerini bu depoya eklemeyin (`.gitignore` `*.xlsx` dosyalarını hariç tutar).
+Sipariş listesi, iade kayıtları ve fotoğraflar tarayıcının yerel veritabanındadır; sayfa kapansa da kaybolmaz, yarım
+kalan iade geri yüklenir. Her sürüm (bilgisayar dosyası, Claude sayfası) kendi kayıtlarını tutar. Tarayıcı verilerini
+temizlemek kayıtları siler; düzenli olarak **Excel + Fotoğraflar (ZIP)** alın. Müşteri bilgisi içeren Excel dosyaları
+depoya eklenmez (`.gitignore`).
 
-## Dosyalar
+## Geliştirme
 
 - `index.html`, `css/app.css` – arayüz
 - `js/parser.js` – Sentos Excel çözümleyici (ürün, barkod, adet, fiyat, KDV)
-- `js/app.js` – okutma, onay, ön izleme ve kayıt akışı
-- `js/camera.js` – kamera ve fotoğraf
+- `js/app.js` – okutma, fotoğraf, onay, ön izleme, kayıtlar
+- `js/camera.js` – kamera ve fotoğraf işleme
 - `js/export.js` – Excel ve ZIP çıktısı
-- `js/db.js` – yerel veritabanı
+- `js/db.js` – yerel veritabanı (IndexedDB)
 - `vendor/` – SheetJS (okuma), ExcelJS (yazma), JSZip
+- `python3 tools/build_single.py` → `dist/iade-kabul-bilgisayar.html` (bilgisayar sürümü; kullanıcıya `iade-kabul.html`
+  adıyla verilir) ve `dist/iade-kabul.html` (Artifact) üretir.

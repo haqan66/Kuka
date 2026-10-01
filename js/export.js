@@ -44,21 +44,19 @@
       var entries = line.entries.filter(function (e) { return e.qty > 0; });
       var got = entries.reduce(function (s, e) { return s + e.qty; }, 0);
       var common = {
-        rec: rec, item: it,
-        urun: it.ad, platformAd: it.platformAd, barkod: it.barkod, stokKodu: it.stokKodu,
+        urun: it.ad, barkod: it.barkod,
         siparisAdet: it.adet, birim: it.birimFiyat, kdv: it.kdv, birimKdvDahil: it.birimKdvDahil,
       };
       entries.forEach(function (e) {
         rows.push(Object.assign({}, common, {
           entry: e, iadeAdet: e.qty, durum: e.status || '', photos: e.photos || [],
           tutar: it.birimKdvDahil != null ? round2(it.birimKdvDahil * e.qty) : null,
-          tutarHaric: it.birimFiyat != null ? round2(it.birimFiyat * e.qty) : null,
           eksik: 0,
         }));
       });
       if (got < it.adet) {
         rows.push(Object.assign({}, common, {
-          entry: null, iadeAdet: 0, durum: 'gelmedi', photos: [], tutar: null, tutarHaric: null, eksik: it.adet - got,
+          entry: null, iadeAdet: 0, durum: 'gelmedi', photos: [], tutar: null, eksik: it.adet - got,
         }));
       }
     });
@@ -211,7 +209,6 @@
   root.IadeExport = {
     STATUS_LABEL: STATUS_LABEL,
     rowsForRecord: rowsForRecord,
-    photoNames: photoNames,
     buildExcel: buildExcel,
     buildZip: buildZip,
     download: download,

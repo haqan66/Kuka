@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Uygulamayı tek bir HTML dosyasına paketler (claude.ai Artifact olarak yayınlamak için).
+"""Uygulamayı tek HTML dosyalarına paketler.
 
-Kullanım:
-  python3 tools/build_single.py cikti.html            # kütüphaneler cdnjs'den (claude.ai Artifact için)
-  python3 tools/build_single.py --offline cikti.html  # kütüphaneler de gömülü; çift tıklayıp açılan,
-                                                      # internetsiz çalışan bilgisayar sürümü (canlı kamera)
+Kullanım: python3 tools/build_single.py [çıktı klasörü, varsayılan: dist]
+
+Üretilen dosyalar:
+  iade-kabul-bilgisayar.html  Kütüphaneler gömülü; çift tıklanıp açılır, internetsiz çalışır, canlı kamera vardır.
+  iade-kabul.html             Kütüphaneler cdnjs'den; claude.ai Artifact olarak yayınlanır. Yayınlarken
+                              iade-kabul-bilgisayar.html aynı adla sayfanın yanına eklenir ("Bilgisayar sürümünü indir").
 """
 import re
 import sys
@@ -55,5 +57,6 @@ def main(out, offline=False):
 
 
 if __name__ == '__main__':
-    args = [a for a in sys.argv[1:] if a != '--offline']
-    main(args[0] if args else 'iade-kabul.html', offline='--offline' in sys.argv)
+    dist = Path(sys.argv[1] if len(sys.argv) > 1 else ROOT / 'dist')
+    main(dist / 'iade-kabul-bilgisayar.html', offline=True)
+    main(dist / 'iade-kabul.html')

@@ -42,10 +42,7 @@
 
   function cellStr(v) {
     if (v == null) return '';
-    if (typeof v === 'number') {
-      if (Number.isInteger(v)) return String(v);
-      return String(v);
-    }
+    if (typeof v === 'number') return String(v);
     if (v instanceof Date) return formatDate(v);
     return String(v).replace(/ /g, ' ').trim();
   }
@@ -197,9 +194,8 @@
     var platformNames = splitPlatformNames(g('platformIsim'), n);
 
     // Ürün metni çözülemezse platform isimlerinden kalem üret.
-    if (!parsed.length && n) {
-      var pn = splitPlatformNames(g('platformIsim'), n);
-      for (var z = 0; z < n; z++) parsed.push({ stokKodu: '', ad: pn[z] || g('platformIsim'), adet: adetList[z] || 1, barkod: '' });
+    if (!parsed.length) {
+      for (var z = 0; z < n; z++) parsed.push({ stokKodu: '', ad: platformNames[z] || g('platformIsim'), adet: adetList[z] || 1, barkod: '' });
     }
 
     var items = parsed.map(function (it, i) {
@@ -349,13 +345,9 @@
   var api = {
     readWorkbook: readWorkbook,
     parseRows: parseRows,
-    parseItemsText: parseItemsText,
-    parseNum: parseNum,
     normCode: normCode,
     buildIndex: buildIndex,
     findOrders: findOrders,
-    round2: round2,
-    formatDate: formatDate,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.IadeParser = api;

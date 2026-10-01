@@ -41,7 +41,6 @@
     del: function (key) { return tx('kv', 'readwrite', function (s) { return s.delete(key); }); },
 
     putReturn: function (rec) { return tx('returns', 'readwrite', function (s) { return s.put(rec); }); },
-    getReturn: function (id) { return tx('returns', 'readonly', function (s) { return s.get(id); }); },
     allReturns: function () { return tx('returns', 'readonly', function (s) { return s.getAll(); }); },
     delReturn: function (id) { return tx('returns', 'readwrite', function (s) { return s.delete(id); }); },
     clearReturns: function () { return tx('returns', 'readwrite', function (s) { return s.clear(); }); },
@@ -49,6 +48,5 @@
     putPhoto: function (p) { return tx('photos', 'readwrite', function (s) { return s.put(p); }); },
     getPhoto: function (id) { return tx('photos', 'readonly', function (s) { return s.get(id); }); },
     delPhoto: function (id) { return tx('photos', 'readwrite', function (s) { return s.delete(id); }); },
-    clearPhotos: function () { return tx('photos', 'readwrite', function (s) { return s.clear(); }); },
   };
 })(this);

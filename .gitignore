@@ -4,4 +4,4 @@
 *.csv
 *.zip
 node_modules/
-iade-kabul.html
+dist/
