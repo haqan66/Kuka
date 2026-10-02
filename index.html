@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>İade Kabul</title>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">İade Kabul</div>
+    <nav class="tabs" role="tablist">
+      <button class="tab-btn active" data-tab="iade">İade Al</button>
+      <button class="tab-btn" data-tab="kayitlar">İade Kayıtları <span id="kayitSayi" class="badge">0</span></button>
+      <button class="tab-btn" data-tab="siparisler">Sipariş Listesi</button>
+    </nav>
+    <div class="topright">
+      <span id="veriDurum" class="muted">Sipariş listesi yüklenmedi</span>
+      <label class="btn">Excel Yükle<input type="file" id="excelInput" accept=".xlsx,.xls,.csv" hidden></label>
+      <input id="personel" class="personel" placeholder="Personel adı" autocomplete="off">
+    </div>
+  </header>
+
+  <main>
+    <!-- İADE AL -->
+    <section id="tab-iade" class="tab active">
+      <div class="layout">
+        <div class="main-col">
+          <div class="scanbox">
+            <label id="scanLabel" for="scanInput">Kargo barkodunu okutun</label>
+            <div class="scanrow">
+              <input id="scanInput" autocomplete="off" spellcheck="false" placeholder="Barkod okutun ya da sipariş no / isim yazın">
+              <button id="scanBtn" class="btn">Ara</button>
+            </div>
+            <div id="msg" class="msg" role="status" aria-live="polite"></div>
+            <div id="searchResults"></div>
+          </div>
+
+          <div id="emptyState" class="empty">
+            <ol>
+              <li>Sağ üstten sipariş Excel'ini yükleyin (bir kez yeterli).</li>
+              <li>Kargo barkodunu, sonra ürün barkodlarını okutun.</li>
+              <li>Durumu seçin, <b>Ön İzleme ve Onay</b> ile kaydedin.</li>
+            </ol>
+          </div>
+
+          <div id="orderPanel" hidden>
+            <div id="orderCard" class="order-card"></div>
+            <div class="items-head">
+              <h3>Siparişteki ürünler</h3>
+              <div class="row gap">
+                <button id="btnGroupPhoto" class="btn secondary" title="Tek fotoğraf çekip siparişteki tüm onaylı ürünlere ekler">📷 Toplu fotoğraf</button>
+                <button id="btnConfirmAll" class="btn primary" title="Gelmeyen tüm ürünleri sipariş adediyle onaylar">✓ Hepsini onayla (F4)</button>
+              </div>
+            </div>
+            <div id="items"></div>
+            <div id="unknownBox"></div>
+            <div class="order-actions">
+              <button id="btnCancel" class="btn ghost">Vazgeç</button>
+              <button id="btnPreview" class="btn primary big">Ön İzleme ve Onay (F2)</button>
+            </div>
+          </div>
+        </div>
+
+        <aside class="side-col">
+          <div class="panel">
+            <div class="panel-head">
+              <b>Kamera</b>
+              <select id="camSelect" title="Kamera seç"></select>
+            </div>
+            <div class="video-wrap">
+              <video id="video" playsinline muted autoplay></video>
+              <div id="camOff" class="cam-off">
+                <span id="camOffText">Kamera kapalı</span>
+                <div class="row gap">
+                  <button id="camStart" class="btn">Kamerayı Aç</button>
+                  <button id="camDiag" class="btn secondary">Kamera tanılama</button>
+                  <button id="camGetOffline" class="btn primary" hidden>Bilgisayar sürümünü indir</button>
+                </div>
+              </div>
+              <div id="countdown" class="countdown" hidden></div>
+              <div id="flash" class="flash"></div>
+            </div>
+            <div class="row gap cam-actions">
+              <button id="genelFoto" class="btn secondary" disabled>📷 Paket fotoğrafı</button>
+              <label class="btn secondary">Dosyadan ekle<input type="file" accept="image/*" capture="environment" id="genelFotoFile" hidden></label>
+            </div>
+            <div id="genelFotolar" class="thumbs"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head"><b>Okutulan ürünün durumu</b></div>
+            <div class="seg big-seg" id="defaultStatus">
+              <button data-v="">Sonra seç</button>
+              <button data-v="satilabilir" class="ok">Satılabilir</button>
+              <button data-v="imha" class="bad">İmha</button>
+            </div>
+          </div>
+
+          <details class="panel settings">
+            <summary><b>Ayarlar</b></summary>
+            <div class="set-row">
+              <span>Otomatik fotoğraf</span>
+              <div class="seg compact" id="photoAuto" title="Birden fazla seçilebilir; hiçbiri seçili değilse kapalı">
+                <button data-v="paket">Paket</button>
+                <button data-v="okutma">Okutunca</button>
+                <button data-v="onay">Onaylayınca</button>
+              </div>
+            </div>
+            <div class="set-row">
+              <span>Çekim gecikmesi</span>
+              <div class="seg compact" id="photoDelay">
+                <button data-v="0">0 sn</button>
+                <button data-v="1">1 sn</button>
+                <button data-v="2">2 sn</button>
+                <button data-v="3">3 sn</button>
+              </div>
+            </div>
+            <p class="hint" id="photoHint"></p>
+            <label class="check"><input type="checkbox" id="voiceOn" checked> Sesli uyarı</label>
+            <p class="hint"><kbd>F2</kbd> Ön izleme · <kbd>F4</kbd> Hepsini onayla · <kbd>F6</kbd>/<kbd>F7</kbd> Son eklenen → Satılabilir/İmha</p>
+          </details>
+        </aside>
+      </div>
+    </section>
+
+    <!-- İADE KAYITLARI -->
+    <section id="tab-kayitlar" class="tab">
+      <div class="toolbar">
+        <input id="kayitAra" placeholder="Sipariş no, isim, kargo no ara" autocomplete="off">
+        <label>Başlangıç <input type="date" id="kayitBas"></label>
+        <label>Bitiş <input type="date" id="kayitBit"></label>
+        <span class="spacer"></span>
+        <label class="check"><input type="checkbox" id="sadeceUyari"> Sadece uyarılı kayıtlar</label>
+        <label class="check"><input type="checkbox" id="embedPhotos" checked> Fotoğrafları Excel'e göm</label>
+        <button id="btnExcel" class="btn primary">Excel İndir</button>
+        <button id="btnZip" class="btn secondary">Excel + Fotoğraflar (ZIP)</button>
+        <button id="btnClearAll" class="btn danger ghost">Tüm kayıtları sil</button>
+      </div>
+      <div id="kayitOzet" class="summary"></div>
+      <div class="table-wrap"><table id="kayitTable" class="grid"></table></div>
+    </section>
+
+    <!-- SİPARİŞ LİSTESİ -->
+    <section id="tab-siparisler" class="tab">
+      <div class="toolbar">
+        <input id="siparisAra" placeholder="Kargo no, sipariş no, isim veya ürün ara" autocomplete="off">
+        <span id="siparisSayi" class="muted"></span>
+        <span class="spacer"></span>
+        <button id="btnClearOrders" class="btn danger ghost">Sipariş listesini temizle</button>
+      </div>
+      <div class="table-wrap"><table id="siparisTable" class="grid"></table></div>
+    </section>
+  </main>
+
+  <div id="dialog" class="dialog-backdrop" hidden>
+    <div class="dialog" role="dialog" aria-modal="true" tabindex="-1">
+      <div class="dialog-head"><h2 id="dialogTitle"></h2><button id="dialogClose" class="x" aria-label="Kapat">×</button></div>
+      <div id="dialogBody" class="dialog-body"></div>
+      <div id="dialogFoot" class="dialog-foot"></div>
+    </div>
+  </div>
+
+  <input type="file" accept="image/*" capture="environment" id="entryFotoFile" hidden>
+
+  <script src="vendor/xlsx.full.min.js"></script>
+  <script src="vendor/jszip.min.js"></script>
+  <script src="vendor/exceljs.min.js"></script>
+  <script src="js/parser.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/camera.js"></script>
+  <script src="js/export.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

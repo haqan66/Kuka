@@ -1,0 +1,7 @@
+# Müşteri verisi içeren sipariş/iade dosyaları depoya eklenmez
+*.xlsx
+*.xls
+*.csv
+*.zip
+node_modules/
+dist/
