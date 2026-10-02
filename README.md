@@ -24,9 +24,13 @@ gibi çalışır; ek ayar gerekmez.
 2. **Ürün barkodu okutulur** ya da "Gelen adet" yazılıp **Onayla** denir. Eşleştirme Sentos barkodu, ürün/platform
    adındaki barkodlar, model kodu ve stok kodu ile yapılır. Siparişte olmayan barkod hangi ürüne ait olduğu seçilerek
    öğretilebilir.
-3. **Fotoğraf** otomatik çekilir (sağ panel): *Paket* modunda sipariş açılınca tek paket fotoğrafı, *Her ürün* modunda
-   her okutmada ürün fotoğrafı. **Çekim gecikmesi** (0–3 sn) boyunca kamerada geri sayım görünür. Fotoğrafa tarih/saat,
-   personel, sipariş no, kargo no ve ürün adı basılır.
+3. **Fotoğraf** otomatik çekilir. Sağ paneldeki **Otomatik fotoğraf** seçenekleri birlikte seçilebilir: *Paket*
+   (sipariş açılınca paket fotoğrafı), *Okutunca* (ürün barkodu okutulunca), *Onaylayınca* ("Onayla" / "Hepsini onayla"
+   basılınca). Hiçbiri seçili değilse otomatik çekim kapalıdır. **Çekim gecikmesi** (0–3 sn) boyunca kamerada geri sayım
+   görünür. Fotoğrafa tarih/saat, personel, sipariş no, kargo no ve ürün adı basılır.
+   - **Hepsini onayla (F4):** gelmeyen tüm ürünleri sipariş adediyle tek seferde onaylar; tek bir toplu fotoğraf çekilir.
+   - **Toplu fotoğraf:** ürünler yan yana dizilip tek kare çekilir ve siparişteki tüm onaylı ürünlere eklenir
+     (ZIP'te `..._toplu_1.jpg` adıyla).
 4. **Durum** seçilir: Yeniden Satılabilir / İmha. "Okutulan ürünün durumu" seçimi okutulan ürünlere otomatik uygulanır;
    aynı üründen farklı durumlar için "1 adet ayır" kullanılır.
 5. **Ön İzleme ve Onay (F2):** kalemler, adetler, durumlar, fotoğraflar ve tutarlar kontrol edilip kaydedilir.
@@ -65,7 +69,7 @@ Kamera alanındaki **Kamera tanılama** düğmesi nedeni ve çözümü gösterir
 
 ## Kısayollar
 
-`F2` ön izleme ve onay · `F6` / `F7` son eklenen kalemi Yeniden Satılabilir / İmha yap · Odak başka yerdeyken okutulan
+`F2` ön izleme ve onay · `F4` hepsini onayla · `F6` / `F7` son eklenen kalemi Yeniden Satılabilir / İmha yap · Odak başka yerdeyken okutulan
 barkod otomatik olarak okutma kutusuna gider.
 
 ## Veriler

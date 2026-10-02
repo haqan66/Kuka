@@ -14,14 +14,14 @@
     learned: {},
     unknownCode: null,
     results: [],
-    photoMode: 'paket', // paket | urun | kapali
+    photo: { paket: true, okutma: false, onay: true }, // otomatik fotoğraf anları (birlikte seçilebilir)
     photoDelay: 2,
     voice: true,
   };
   var pendingShots = [];
   var queue = Promise.resolve();
   var urlCache = new Map();
-  var pendingEntryPhoto = null;
+  var pendingPhotoTargets = null; // kamera yokken dosyadan gelecek fotoğrafın ekleneceği kalemler
 
   // ---------- yardımcılar ----------
   function $(id) { return document.getElementById(id); }
@@ -384,7 +384,7 @@
           say('Sipariş bulundu. ' + order.items.length + ' ürün');
           setMsg('✓ Sipariş bulundu: ' + order.siparisNo + ' – ' + order.musteri + '. Şimdi ürün barkodlarını okutun.', 'ok');
         }
-        if (S.photoMode === 'paket') takePackagePhoto();
+        if (S.photo.paket) takePackagePhoto();
       });
     });
   }
@@ -406,11 +406,9 @@
     });
   }
 
-  function addEntry(itemIdx, qty, via) {
-    var d = S.draft;
-    var it = d.order.items[itemIdx];
+  // Kaleme adet ekler (aynı durumdaki kalem varsa üstüne yazar); bildirim yapmaz
+  function putQty(itemIdx, qty, via) {
     var line = lineOf(itemIdx);
-    var got = received(line);
     var status = S.defaultStatus;
     var e = line.entries.find(function (x) { return x.status === status; });
     if (!e) {
@@ -420,6 +418,19 @@
     e.qty += qty;
     e.at = nowISO();
     S.lastEntry = { itemIdx: itemIdx, entryId: e.id };
+    return e;
+  }
+
+  function allReceived(d) {
+    return d.order.items.every(function (x) { return received(lineOf(x.idx)) >= x.adet; });
+  }
+
+  // via: 'okutma' (barkod) | 'elle' (Onayla düğmesi)
+  function addEntry(itemIdx, qty, via) {
+    var d = S.draft;
+    var it = d.order.items[itemIdx];
+    var got = received(lineOf(itemIdx));
+    var e = putQty(itemIdx, qty, via);
     saveDraft();
     renderDraft(itemIdx);
 
@@ -430,26 +441,72 @@
       setMsg('⚠ ' + it.ad + ': siparişte ' + it.adet + ' adet var, iade ' + total + ' oldu. Fazlaysa kalemin adedini düşürün.', 'err');
     } else {
       beep('ok');
-      var allDone = d.order.items.every(function (x) { return received(lineOf(x.idx)) >= x.adet; });
-      say(allDone ? 'Tamam. Tüm ürünler geldi' : 'Tamam');
+      say(allReceived(d) ? 'Tamam. Tüm ürünler geldi' : 'Tamam');
       setMsg('✓ ' + it.ad + ' – ' + qty + ' adet onaylandı (' + total + '/' + it.adet + ')', 'ok');
     }
-
-    if (S.photoMode === 'urun') {
-      scheduleCapture('Ürün: ' + it.ad + ' · ' + qty + ' adet').then(function (pid) {
-        if (pid && S.draft === d) {
-          e.photos.push(pid);
-          saveDraft();
-          renderDraft();
-        } else if (pid === null && S.draft === d) {
-          // Canlı kamera yok: telefonda kamera uygulamasını, bilgisayarda dosya seçimini aç
-          setMsg('Canlı kamera yok, ürün fotoğrafını seçin veya çekin.', 'warn');
-          pendingEntryPhoto = { itemIdx: itemIdx, entryId: e.id };
-          $('entryFotoFile').click();
-        }
-      });
+    if (via === 'okutma' ? S.photo.okutma : S.photo.onay) {
+      photoToEntries([{ itemIdx: itemIdx, entryId: e.id }], 'Ürün: ' + it.ad + ' · ' + qty + ' adet');
     }
     return Promise.resolve();
+  }
+
+  // Hepsini onayla: gelmeyen tüm ürünleri kalan adetleriyle onaylar; tek (toplu) fotoğraf çeker
+  function confirmAll() {
+    var d = S.draft;
+    if (!d) return;
+    var targets = [];
+    d.order.items.forEach(function (it) {
+      var rem = it.adet - received(lineOf(it.idx));
+      if (rem > 0) targets.push({ itemIdx: it.idx, entryId: putQty(it.idx, rem, 'toplu').id });
+    });
+    if (!targets.length) {
+      setMsg('Tüm ürünler zaten onaylı.', 'warn');
+      beep('warn');
+      return;
+    }
+    saveDraft();
+    renderDraft();
+    beep('ok');
+    say('Tüm ürünler onaylandı');
+    setMsg('✓ ' + targets.length + ' ürün sipariş adediyle onaylandı' +
+      (S.defaultStatus ? '' : ' · Durumlarını seçmeyi unutmayın'), S.defaultStatus ? 'ok' : 'warn');
+    if (S.photo.onay) photoToEntries(targets, 'Toplu onay: ' + targets.length + ' ürün');
+  }
+
+  // Toplu fotoğraf: tek kare çekip siparişteki tüm onaylı kalemlere ekler (kalem yoksa paket fotoğrafı olur)
+  function groupPhoto() {
+    var d = S.draft;
+    if (!d) return Promise.resolve();
+    var targets = [];
+    d.lines.forEach(function (l) {
+      l.entries.forEach(function (e) { if (e.qty > 0) targets.push({ itemIdx: l.itemIdx, entryId: e.id }); });
+    });
+    if (!targets.length) return takePackagePhoto();
+    return photoToEntries(targets, 'Toplu fotoğraf: ' + targets.length + ' kalem', true);
+  }
+
+  // Gecikmeli çekip fotoğrafı verilen kalemlere ekler; canlı kamera yoksa dosya/telefon kamerası açılır
+  function photoToEntries(targets, label, manual) {
+    var d = S.draft;
+    return (manual && !S.photoDelay ? captureFromCamera(label) : scheduleCapture(label)).then(function (pid) {
+      if (S.draft !== d) return;
+      if (pid) {
+        attachPhoto(targets, pid);
+      } else if (pid === null) {
+        setMsg('Canlı kamera yok: fotoğrafı seçin veya çekin.', 'warn');
+        pendingPhotoTargets = { targets: targets, label: label };
+        $('entryFotoFile').click();
+      }
+    });
+  }
+
+  function attachPhoto(targets, pid) {
+    targets.forEach(function (t) {
+      var e = findEntry(t.itemIdx, t.entryId);
+      if (e && e.photos.indexOf(pid) < 0) e.photos.push(pid);
+    });
+    saveDraft();
+    renderDraft();
   }
 
   function findEntry(itemIdx, entryId) {
@@ -576,7 +633,7 @@
         '<div class="item-count"><span class="n">' + got + '</span> / ' + it.adet + '<small>iade / sipariş</small>' + (got > it.adet ? '<span class="over-txt">Fazla: ' + (got - it.adet) + ' adet</span>' : '') + '</div></div>' +
         '<div class="item-ctrl" data-item="' + it.idx + '">' +
         '<label>Gelen adet <input type="number" min="1" value="' + remaining + '" data-act="mqty"></label>' +
-        '<button class="btn primary" data-act="confirm">✓ Onayla' + (S.photoMode === 'urun' ? ' + Fotoğraf' : '') + '</button>' +
+        '<button class="btn primary" data-act="confirm">✓ Onayla' + (S.photo.onay ? ' + Fotoğraf' : '') + '</button>' +
         '</div>' +
         (entries ? '<div class="entries">' + entries + '</div>' : '') +
         '</div>';
@@ -1067,15 +1124,7 @@
       if (!entry) return;
       if (act === 'st') { setEntryStatus(itemIdx, entryId, b.dataset.v); S.lastEntry = { itemIdx: itemIdx, entryId: entryId }; focusScan(); }
       else if (act === 'photo') {
-        if (CAM.isReady()) {
-          captureFromCamera('Ürün: ' + S.draft.order.items[itemIdx].ad).then(function (pid) {
-            if (pid) entry.photos.push(pid);
-            saveDraft(); renderDraft(); focusScan();
-          });
-        } else {
-          pendingEntryPhoto = { itemIdx: itemIdx, entryId: entryId };
-          $('entryFotoFile').click();
-        }
+        photoToEntries([{ itemIdx: itemIdx, entryId: entryId }], 'Ürün: ' + S.draft.order.items[itemIdx].ad, true).then(focusScan);
       } else if (act === 'split') {
         entry.qty -= 1;
         var ne = { id: uid(), qty: 1, status: '', photos: entry.photos.length > 1 ? [entry.photos.pop()] : [], at: nowISO(), via: 'ayır' };
@@ -1111,14 +1160,11 @@
     $('entryFotoFile').addEventListener('change', function (e) {
       var f = e.target.files[0];
       e.target.value = '';
-      var target = pendingEntryPhoto;
-      pendingEntryPhoto = null;
-      if (!f || !target || !S.draft) return;
-      var it = S.draft.order.items[target.itemIdx];
-      CAM.fromFile(f, overlayLines('Ürün: ' + it.ad)).then(storePhoto).then(function (pid) {
-        var entry = findEntry(target.itemIdx, target.entryId);
-        if (pid && entry) entry.photos.push(pid);
-        saveDraft(); renderDraft();
+      var p = pendingPhotoTargets;
+      pendingPhotoTargets = null;
+      if (!f || !p || !S.draft) return;
+      CAM.fromFile(f, overlayLines(p.label)).then(storePhoto).then(function (pid) {
+        if (pid) attachPhoto(p.targets, pid);
       });
     });
 
@@ -1177,7 +1223,7 @@
       }).then(function () { btn.disabled = false; });
     });
     $('camSelect').addEventListener('change', function (e) { startCamera(e.target.value).then(focusScan); });
-    S.photoMode = lsGet('iade.fotoModu', 'paket');
+    S.photo = lsGet('iade.fotoOto', null) || { paket: true, okutma: false, onay: true };
     S.photoDelay = lsGet('iade.fotoGecikme', 2);
     S.voice = lsGet('iade.sesli', true);
     $('voiceOn').checked = S.voice;
@@ -1196,17 +1242,26 @@
         focusScan();
       });
     }
-    var MODE_HINT = {
-      paket: 'Sipariş açılınca paketin tek fotoğrafı çekilir. Ürünü masaya/pakete yerleştirmek için gecikme süresini kullanın.',
-      urun: 'Her ürün okutulduğunda ya da onaylandığında ayrı fotoğraf çekilir.',
-      kapali: 'Otomatik fotoğraf çekilmez; "Paket fotoğrafı çek" veya kalemdeki "Foto" ile elle çekilir.',
-    };
-    $('photoModeHint').textContent = MODE_HINT[S.photoMode] || '';
-    bindSeg('photoMode', function () { return S.photoMode; }, function (v) {
-      S.photoMode = v;
-      lsSet('iade.fotoModu', v);
-      $('photoModeHint').textContent = MODE_HINT[v] || '';
+    // Otomatik fotoğraf anları: birden fazlası seçilebilir
+    function paintPhoto() {
+      document.querySelectorAll('#photoAuto button').forEach(function (b) { b.classList.toggle('on', !!S.photo[b.dataset.v]); });
+      var on = [];
+      if (S.photo.paket) on.push('sipariş açılınca paketin');
+      if (S.photo.okutma) on.push('ürün barkodu okutulunca ürünün');
+      if (S.photo.onay) on.push('"Onayla"/"Hepsini onayla"ya basılınca ürünlerin');
+      $('photoHint').textContent = on.length
+        ? 'Otomatik çekim: ' + on.join(', ') + ' fotoğrafı. Gecikme süresi ürünü yerleştirmek içindir.'
+        : 'Otomatik fotoğraf kapalı; "Paket fotoğrafı çek", "Toplu fotoğraf" veya kalemdeki "Foto" ile elle çekilir.';
+    }
+    paintPhoto();
+    $('photoAuto').addEventListener('click', function (e) {
+      var b = e.target.closest('button');
+      if (!b) return;
+      S.photo[b.dataset.v] = !S.photo[b.dataset.v];
+      lsSet('iade.fotoOto', S.photo);
+      paintPhoto();
       renderDraft();
+      focusScan();
     });
     bindSeg('photoDelay', function () { return S.photoDelay; }, function (v) {
       S.photoDelay = +v;
@@ -1224,6 +1279,8 @@
     });
 
     $('btnPreview').addEventListener('click', openPreview);
+    $('btnConfirmAll').addEventListener('click', function () { confirmAll(); focusScan(); });
+    $('btnGroupPhoto').addEventListener('click', function () { groupPhoto().then(focusScan); });
     $('btnCancel').addEventListener('click', function () {
       if (!S.draft) return;
       var p = draftHasWork(S.draft)
@@ -1322,6 +1379,7 @@
         return;
       }
       if (e.key === 'F2') { e.preventDefault(); openPreview(); return; }
+      if (e.key === 'F4') { e.preventDefault(); confirmAll(); return; }
       if ((e.key === 'F6' || e.key === 'F7') && S.draft && S.lastEntry) {
         e.preventDefault();
         var en = findEntry(S.lastEntry.itemIdx, S.lastEntry.entryId);

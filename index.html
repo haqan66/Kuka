@@ -51,7 +51,10 @@
             <div id="orderCard" class="order-card"></div>
             <div class="items-head">
               <h3>Siparişteki ürünler</h3>
-              <span id="scanHint" class="muted">2) Ürün barkodunu okutun</span>
+              <div class="row gap">
+                <button id="btnGroupPhoto" class="btn secondary" title="Tek fotoğraf çekip siparişteki tüm onaylı ürünlere ekler">📷 Toplu fotoğraf</button>
+                <button id="btnConfirmAll" class="btn primary" title="Gelmeyen tüm ürünleri sipariş adediyle onaylar">✓ Hepsini onayla (F4)</button>
+              </div>
             </div>
             <div id="items"></div>
             <div id="unknownBox"></div>
@@ -83,10 +86,10 @@
             </div>
             <div class="set-row">
               <span>Otomatik fotoğraf</span>
-              <div class="seg compact" id="photoMode">
+              <div class="seg compact" id="photoAuto" title="Birden fazla seçilebilir; hiçbiri seçili değilse kapalı">
                 <button data-v="paket">Paket</button>
-                <button data-v="urun">Her ürün</button>
-                <button data-v="kapali">Kapalı</button>
+                <button data-v="okutma">Okutunca</button>
+                <button data-v="onay">Onaylayınca</button>
               </div>
             </div>
             <div class="set-row">
@@ -98,7 +101,7 @@
                 <button data-v="3">3 sn</button>
               </div>
             </div>
-            <p class="hint" id="photoModeHint"></p>
+            <p class="hint" id="photoHint"></p>
             <label class="check"><input type="checkbox" id="voiceOn" checked> Sesli uyarı ("Tamam", "Bu ürün siparişte yok"…)</label>
             <div class="row gap">
               <button id="genelFoto" class="btn secondary" disabled>Paket fotoğrafı çek</button>
@@ -115,7 +118,7 @@
               <button data-v="imha" class="bad">İmha</button>
             </div>
             <p class="hint">Okutulan/onaylanan ürün bu durumla eklenir. Her kalemin durumunu sonradan değiştirebilirsiniz.</p>
-            <p class="hint"><kbd>F2</kbd> Ön izleme · <kbd>F6</kbd> Son eklenen → Satılabilir · <kbd>F7</kbd> Son eklenen → İmha</p>
+            <p class="hint"><kbd>F2</kbd> Ön izleme · <kbd>F4</kbd> Hepsini onayla · <kbd>F6</kbd> Son eklenen → Satılabilir · <kbd>F7</kbd> Son eklenen → İmha</p>
           </div>
         </aside>
       </div>

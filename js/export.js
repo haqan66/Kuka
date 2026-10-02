@@ -16,19 +16,25 @@
     return String(s || '').replace(/[^0-9A-Za-zÇĞİÖŞÜçğıöşü_-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'x';
   }
 
-  // Fotoğraf id → ZIP içindeki dosya adı
+  // Fotoğraf id → ZIP içindeki dosya adı. Birden fazla ürüne eklenen fotoğraf "toplu" adını alır.
   function photoNames(rec) {
     var map = {};
-    var base = safe(rec.order.siparisNo || rec.order.kargoKodu);
-    (rec.genelFotolar || []).forEach(function (pid, i) {
-      map[pid] = 'fotograflar/' + base + '/' + base + '_genel_' + (i + 1) + '.jpg';
+    var dir = safe(rec.order.siparisNo || rec.order.kargoKodu);
+    function name(kind, n) { return 'fotograflar/' + dir + '/' + dir + '_' + kind + '_' + n + '.jpg'; }
+    var lineCount = {};
+    rec.lines.forEach(function (line) {
+      var seen = {};
+      line.entries.forEach(function (e) { (e.photos || []).forEach(function (pid) { seen[pid] = 1; }); });
+      Object.keys(seen).forEach(function (pid) { lineCount[pid] = (lineCount[pid] || 0) + 1; });
     });
+    (rec.genelFotolar || []).forEach(function (pid, i) { map[pid] = name('genel', i + 1); });
+    var toplu = 0;
     rec.lines.forEach(function (line) {
       var n = 0;
       line.entries.forEach(function (e) {
         (e.photos || []).forEach(function (pid) {
-          n++;
-          map[pid] = 'fotograflar/' + base + '/' + base + '_urun' + (line.itemIdx + 1) + '_' + n + '.jpg';
+          if (map[pid]) return;
+          map[pid] = lineCount[pid] > 1 ? name('toplu', ++toplu) : name('urun' + (line.itemIdx + 1), ++n);
         });
       });
     });

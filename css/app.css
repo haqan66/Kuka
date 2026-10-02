@@ -223,6 +223,7 @@ main { padding: 16px; }
 }
 .set-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-top: 10px; font-size: 14px; }
 .seg.compact button { padding: 5px 9px; font-size: 13px; }
+.seg.compact button.on { background: var(--primary); color: var(--primary-ink); }
 .alert.err { background: var(--bad-bg); color: var(--bad); display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .over-txt { display: block; color: var(--bad); font-weight: 800; font-size: 12px; }
 tr.warnrow td { background: var(--warn-bg); }
