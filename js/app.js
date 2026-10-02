@@ -572,12 +572,13 @@
     $('orderPanel').hidden = !d;
     $('emptyState').hidden = !!d;
     $('genelFoto').disabled = !d;
-    $('scanLabel').textContent = d ? '2) Ürün barkodunu okutun (yeni poşet için kargo barkodu okutabilirsiniz)' : '1) Kargo poşetindeki barkodu okutun';
+    $('scanLabel').textContent = d ? 'Ürün barkodunu okutun' : 'Kargo barkodunu okutun';
     renderGenelFotolar();
     if (!d) { $('items').innerHTML = ''; $('orderCard').innerHTML = ''; renderUnknown(); return; }
     var o = d.order;
-    var durumTarihLabel = /TESL/.test(o.durum) ? 'Teslim Tarihi' : /İPTAL/.test(o.durum) ? 'İptal / İade Tarihi' : 'Durum Tarihi';
-    function f(label, val, cls) { return '<div class="f ' + (cls || '') + '"><small>' + label + '</small><span>' + dash(val) + '</span></div>'; }
+    var durumTarihLabel = /TESL/.test(o.durum) ? 'Teslim' : /İPTAL/.test(o.durum) ? 'İptal/İade' : 'Durum';
+    function f(label, val) { return '<div class="f"><small>' + label + '</small><span>' + dash(val) + '</span></div>'; }
+    function m(label, val) { return val ? '<span>' + label + ': <b>' + esc(val) + '</b></span>' : ''; }
     var html = '';
     if (d.editingId) html += '<div class="alert">Kayıtlı bir iade düzenleniyor. Değişiklikler "Ön İzleme ve Onay" ile kaydedilir.</div>';
     var once = (d.oncekiIadeler || []).filter(function (r) { return r.id !== d.editingId && S.returns.some(function (x) { return x.id === r.id; }); });
@@ -587,50 +588,47 @@
         (last.personel ? ' · ' + esc(last.personel) : '') + '</span>' +
         '<button class="btn small" data-edit-prev="' + esc(last.id) + '">Önceki kaydı düzenle</button></div>';
     }
-    html += f('Sipariş No', o.siparisNo, 'big') + f('İsim Soyisim', o.musteri, 'big') + f('Kargo Takip No (Kampanya Kodu)', o.kargoKodu, 'big') +
-      f('Fatura No', o.faturaNo || 'Faturası kesilmemiş / yok') + f('Fatura Tarihi', (o.faturaTarihi || '').slice(0, 10)) +
-      f('Kargo Firması', o.kargoFirma) + f('Kanal / Mağaza', [o.kanal, o.magaza].filter(Boolean).join(' / ')) +
-      f('Sipariş Tarihi', o.tarih) + f('Kargoya Verilme (etiket yazdırma)', o.kargoYazdirma) +
-      f('Kargoya Son Teslim Tarihi', o.kargoSonTeslim) +
-      '<div class="f"><small>Sipariş Durumu</small><span>' + statusPill(o.durum) + '</span></div>' +
-      f(durumTarihLabel, o.durumTarihi) +
-      f('Adres', [o.adres, o.sehir].filter(Boolean).join(' – '), 'wide');
+    html += '<div class="oc-top">' +
+      '<div><small>Kanal / Mağaza</small><b>' + dash([o.kanal, o.magaza].filter(Boolean).join(' / ')) + '</b></div>' +
+      '<div><small>Kargo Firması</small><b>' + dash(o.kargoFirma) + '</b></div></div>' +
+      '<div class="oc-main">' + f('Sipariş No', o.siparisNo) + f('İsim Soyisim', o.musteri) + f('Kargo Takip No', o.kargoKodu) +
+      f('Fatura No', o.faturaNo || 'Yok') + '</div>' +
+      '<div class="oc-meta">' + statusPill(o.durum) + m(durumTarihLabel, o.durumTarihi) + m('Sipariş', o.tarih) +
+      m('Kargoya verilme', o.kargoYazdirma) + m('Son teslim', o.kargoSonTeslim) + m('Fatura tarihi', (o.faturaTarihi || '').slice(0, 10)) +
+      ((o.adres || o.sehir) ? '<details><summary>Adres</summary>' + esc([o.adres, o.sehir].filter(Boolean).join(' – ')) + '</details>' : '') +
+      '</div>';
     $('orderCard').innerHTML = html;
 
     $('items').innerHTML = o.items.map(function (it) {
       var line = lineOf(it.idx);
       var got = received(line);
       var cls = got === 0 ? '' : got < it.adet ? 'partial' : got === it.adet ? 'done' : 'over';
-      var price = it.birimFiyat != null
-        ? tl(it.birimFiyat) + (it.kdv != null ? ' + %' + it.kdv + ' KDV = <b>' + tl(it.birimKdvDahil) + '</b>' : ' (KDV hariç)')
-        : '—';
-      var sub = [];
-      if (it.platformAd && it.platformAd !== it.ad) sub.push(esc(it.platformAd));
-      sub.push('Barkod: <b>' + esc(it.barkod || '—') + '</b>' + (it.stokKodu ? ' · Stok: ' + esc(it.stokKodu) : ''));
+      var price = it.birimKdvDahil != null ? tl(it.birimKdvDahil) : it.birimFiyat != null ? tl(it.birimFiyat) + ' + KDV' : '';
+      var priceTip = it.birimFiyat != null ? 'KDV hariç ' + tl(it.birimFiyat) + (it.kdv != null ? ' · %' + it.kdv + ' KDV' : '') : '';
       var remaining = Math.max(it.adet - got, 1);
       var entries = line.entries.map(function (e) {
-        return '<div class="entry ' + (e.status ? '' : 'nostatus') + '" data-item="' + it.idx + '" data-entry="' + e.id + '">' +
-          '<label>Adet <input class="qty" type="number" min="1" value="' + e.qty + '" data-act="qty"></label>' +
-          '<div class="seg">' +
-          '<button class="ok ' + (e.status === 'satilabilir' ? 'on' : '') + '" data-act="st" data-v="satilabilir">Yeniden Satılabilir</button>' +
-          '<button class="bad ' + (e.status === 'imha' ? 'on' : '') + '" data-act="st" data-v="imha">İmha</button>' +
-          '</div>' +
-          (e.status ? '' : '<span class="nophoto">Durum seçin!</span>') +
+        var tags = (e.status ? '' : '<span class="tag">Durum seçin</span>') +
+          ((e.photos || []).length || d.genelFotolar.length ? '' : '<span class="tag">Fotoğraf yok</span>');
+        return '<div class="entry ' + (e.status ? 'st-' + e.status : 'nostatus') + '" data-item="' + it.idx + '" data-entry="' + e.id + '">' +
+          '<label class="qtylbl">Adet <input class="qty" type="number" min="1" value="' + e.qty + '" data-act="qty"></label>' +
+          '<div class="seg big-seg">' +
+          '<button class="ok ' + (e.status === 'satilabilir' ? 'on' : '') + '" data-act="st" data-v="satilabilir">✓ Yeniden Satılabilir</button>' +
+          '<button class="bad ' + (e.status === 'imha' ? 'on' : '') + '" data-act="st" data-v="imha">✕ İmha</button>' +
+          '</div>' + tags +
           '<div class="thumbs">' + (e.photos || []).map(function (pid) { return thumbHTML(pid, 'entry'); }).join('') + '</div>' +
-          ((e.photos || []).length || d.genelFotolar.length ? '' : '<span class="nophoto">Fotoğraf yok</span>') +
           '<span class="grow"></span>' +
-          '<span class="time">' + new Date(e.at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) + '</span>' +
-          '<button class="btn small" data-act="photo" title="Bu kaleme fotoğraf ekle">📷 Foto</button>' +
+          '<button class="btn small" data-act="photo" title="Bu kaleme fotoğraf ekle">📷</button>' +
           (e.qty > 1 ? '<button class="btn small" data-act="split" title="1 adedi ayrı kalem yap (farklı durum için)">1 adet ayır</button>' : '') +
           '<button class="btn small danger ghost" data-act="del" title="Kalemi sil">Sil</button>' +
           '</div>';
       }).join('');
       return '<div class="item ' + cls + (highlightIdx === it.idx ? ' hl' : '') + '" id="item-' + it.idx + '">' +
-        '<div class="item-top"><div class="item-no">#' + (it.idx + 1) + '</div>' +
-        '<div class="item-info"><div class="item-name">' + esc(it.ad) + '</div>' +
-        '<div class="item-sub">' + sub.join('<br>') + '</div>' +
-        '<div class="item-sub">Fatura birim fiyatı: ' + price + '</div></div>' +
-        '<div class="item-count"><span class="n">' + got + '</span> / ' + it.adet + '<small>iade / sipariş</small>' + (got > it.adet ? '<span class="over-txt">Fazla: ' + (got - it.adet) + ' adet</span>' : '') + '</div></div>' +
+        '<div class="item-top"><div class="item-info">' +
+        '<div class="item-name"' + (it.platformAd && it.platformAd !== it.ad ? ' title="' + esc(it.platformAd) + '"' : '') + '>' +
+        '<span class="item-no">' + (it.idx + 1) + '.</span> ' + esc(it.ad) + '</div>' +
+        '<div class="item-sub">' + esc(it.barkod || 'Barkod yok') + (price ? ' · <span title="' + esc(priceTip) + '">' + price + '</span>' : '') + '</div></div>' +
+        '<div class="item-count"><span class="n">' + got + '</span> / ' + it.adet +
+        (got > it.adet ? '<span class="over-txt">Fazla: ' + (got - it.adet) + ' adet</span>' : '') + '</div></div>' +
         '<div class="item-ctrl" data-item="' + it.idx + '">' +
         '<label>Gelen adet <input type="number" min="1" value="' + remaining + '" data-act="mqty"></label>' +
         '<button class="btn primary" data-act="confirm">✓ Onayla' + (S.photo.onay ? ' + Fotoğraf' : '') + '</button>' +
@@ -1251,7 +1249,7 @@
       if (S.photo.onay) on.push('"Onayla"/"Hepsini onayla"ya basılınca ürünlerin');
       $('photoHint').textContent = on.length
         ? 'Otomatik çekim: ' + on.join(', ') + ' fotoğrafı. Gecikme süresi ürünü yerleştirmek içindir.'
-        : 'Otomatik fotoğraf kapalı; "Paket fotoğrafı çek", "Toplu fotoğraf" veya kalemdeki "Foto" ile elle çekilir.';
+        : 'Otomatik fotoğraf kapalı; "Paket fotoğrafı", "Toplu fotoğraf" veya kalemdeki 📷 ile elle çekilir.';
     }
     paintPhoto();
     $('photoAuto').addEventListener('click', function (e) {

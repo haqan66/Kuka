@@ -27,9 +27,9 @@
       <div class="layout">
         <div class="main-col">
           <div class="scanbox">
-            <label id="scanLabel" for="scanInput">1) Kargo poşetindeki barkodu okutun</label>
+            <label id="scanLabel" for="scanInput">Kargo barkodunu okutun</label>
             <div class="scanrow">
-              <input id="scanInput" autocomplete="off" spellcheck="false" placeholder="Barkod okutun veya sipariş no / müşteri adı yazıp Enter'a basın">
+              <input id="scanInput" autocomplete="off" spellcheck="false" placeholder="Barkod okutun ya da sipariş no / isim yazın">
               <button id="scanBtn" class="btn">Ara</button>
             </div>
             <div id="msg" class="msg" role="status" aria-live="polite"></div>
@@ -37,13 +37,10 @@
           </div>
 
           <div id="emptyState" class="empty">
-            <h2>Başlamak için</h2>
             <ol>
-              <li>Sağ üstten Sentos sipariş Excel'ini yükleyin (bir kez yeterli, tarayıcıda saklanır).</li>
-              <li>Kargo poşetindeki barkodu okutun → sipariş ve ürünler listelenir.</li>
-              <li>Ürün barkodunu okutun (veya adedi yazıp <b>Onayla</b>) → kamera fotoğraf çeker.</li>
-              <li>Her ürün için durumu seçin: <b>Yeniden Satılabilir</b> / <b>İmha</b>.</li>
-              <li><b>Ön İzleme ve Onay</b> ile kontrol edip kaydedin. Tüm iadeler bitince <b>İade Kayıtları</b> sekmesinden Excel alın.</li>
+              <li>Sağ üstten sipariş Excel'ini yükleyin (bir kez yeterli).</li>
+              <li>Kargo barkodunu, sonra ürün barkodlarını okutun.</li>
+              <li>Durumu seçin, <b>Ön İzleme ve Onay</b> ile kaydedin.</li>
             </ol>
           </div>
 
@@ -84,6 +81,24 @@
               <div id="countdown" class="countdown" hidden></div>
               <div id="flash" class="flash"></div>
             </div>
+            <div class="row gap cam-actions">
+              <button id="genelFoto" class="btn secondary" disabled>📷 Paket fotoğrafı</button>
+              <label class="btn secondary">Dosyadan ekle<input type="file" accept="image/*" capture="environment" id="genelFotoFile" hidden></label>
+            </div>
+            <div id="genelFotolar" class="thumbs"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head"><b>Okutulan ürünün durumu</b></div>
+            <div class="seg big-seg" id="defaultStatus">
+              <button data-v="">Sonra seç</button>
+              <button data-v="satilabilir" class="ok">Satılabilir</button>
+              <button data-v="imha" class="bad">İmha</button>
+            </div>
+          </div>
+
+          <details class="panel settings">
+            <summary><b>Ayarlar</b></summary>
             <div class="set-row">
               <span>Otomatik fotoğraf</span>
               <div class="seg compact" id="photoAuto" title="Birden fazla seçilebilir; hiçbiri seçili değilse kapalı">
@@ -102,24 +117,9 @@
               </div>
             </div>
             <p class="hint" id="photoHint"></p>
-            <label class="check"><input type="checkbox" id="voiceOn" checked> Sesli uyarı ("Tamam", "Bu ürün siparişte yok"…)</label>
-            <div class="row gap">
-              <button id="genelFoto" class="btn secondary" disabled>Paket fotoğrafı çek</button>
-              <label class="btn secondary">Dosyadan ekle<input type="file" accept="image/*" capture="environment" id="genelFotoFile" hidden></label>
-            </div>
-            <div id="genelFotolar" class="thumbs"></div>
-          </div>
-
-          <div class="panel">
-            <div class="panel-head"><b>Okutulan ürünün durumu</b></div>
-            <div class="seg" id="defaultStatus">
-              <button data-v="">Sonra seç</button>
-              <button data-v="satilabilir" class="ok">Yeniden Satılabilir</button>
-              <button data-v="imha" class="bad">İmha</button>
-            </div>
-            <p class="hint">Okutulan/onaylanan ürün bu durumla eklenir. Her kalemin durumunu sonradan değiştirebilirsiniz.</p>
-            <p class="hint"><kbd>F2</kbd> Ön izleme · <kbd>F4</kbd> Hepsini onayla · <kbd>F6</kbd> Son eklenen → Satılabilir · <kbd>F7</kbd> Son eklenen → İmha</p>
-          </div>
+            <label class="check"><input type="checkbox" id="voiceOn" checked> Sesli uyarı</label>
+            <p class="hint"><kbd>F2</kbd> Ön izleme · <kbd>F4</kbd> Hepsini onayla · <kbd>F6</kbd>/<kbd>F7</kbd> Son eklenen → Satılabilir/İmha</p>
+          </details>
         </aside>
       </div>
     </section>

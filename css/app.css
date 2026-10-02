@@ -128,6 +128,9 @@ main { padding: 16px; }
 .panel-head select { max-width: 200px; padding: 4px; }
 .hint { color: var(--muted); font-size: 13px; margin: 8px 0 0; }
 .check { display: flex; align-items: center; gap: 6px; margin: 8px 0; font-size: 14px; }
+.cam-actions { margin-top: 10px; }
+.settings summary { cursor: pointer; }
+.settings[open] summary { margin-bottom: 4px; }
 
 /* Okutma alanı */
 .scanbox { margin-bottom: 12px; }
@@ -149,13 +152,19 @@ main { padding: 16px; }
 .empty h2 { margin-top: 0; font-size: 18px; }
 .empty li { margin: 6px 0; }
 
-/* Sipariş kartı */
-.order-card { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px 16px; }
-.order-card .f { min-width: 0; }
-.order-card .f small { display: block; color: var(--muted); font-size: 12px; }
-.order-card .f span { display: block; font-weight: 600; overflow-wrap: anywhere; }
-.order-card .f.big span { font-size: 18px; }
-.order-card .wide { grid-column: 1 / -1; }
+/* Sipariş kartı: üstte kanal/kargo şeridi, altında 4 ana bilgi, en altta tek satır ayrıntı */
+.order-card { display: flex; flex-direction: column; gap: 12px; }
+.oc-top { display: flex; gap: 10px; flex-wrap: wrap; }
+.oc-top > div { flex: 1 1 220px; min-width: 0; background: var(--secondary-bg); border-radius: 8px; padding: 10px 14px; }
+.oc-top small, .oc-main small { display: block; color: var(--muted); font-size: 12px; }
+.oc-top b { display: block; font-size: 22px; line-height: 1.25; overflow-wrap: anywhere; }
+.oc-main { display: flex; flex-wrap: wrap; gap: 8px 36px; }
+.oc-main .f { min-width: 0; }
+.oc-main .f span { display: block; font-size: 18px; font-weight: 700; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.oc-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; color: var(--muted); font-size: 13px; }
+.oc-meta b { color: var(--ink); font-weight: 600; }
+.oc-meta details { flex-basis: 100%; }
+.oc-meta summary { cursor: pointer; color: var(--ink); font-weight: 600; }
 .alert { grid-column: 1 / -1; background: var(--warn-bg); color: var(--warn); border-radius: 8px; padding: 8px 12px; font-weight: 600; }
 .pill { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 700; background: var(--soft); }
 .pill.teslim { background: var(--ok-bg); color: var(--ok); }
@@ -171,39 +180,45 @@ main { padding: 16px; }
 .item.over { border-left-color: var(--bad); }
 .item.hl { box-shadow: 0 0 0 3px var(--focus); }
 .item-top { display: flex; gap: 12px; align-items: flex-start; }
-.item-no { font-weight: 700; color: var(--muted); }
+.item-no { color: var(--muted); }
 .item-info { flex: 1; min-width: 0; }
 .item-name { font-weight: 700; font-size: 16px; }
 .item-sub { color: var(--muted); font-size: 13px; margin-top: 2px; overflow-wrap: anywhere; }
-.item-count { text-align: right; white-space: nowrap; }
-.item-count .n { font-size: 24px; font-weight: 800; }
-.item-count small { display: block; color: var(--muted); }
+.item-count { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.item-count .n { font-size: 26px; font-weight: 800; }
 .item-ctrl { display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 .item-ctrl input { width: 70px; padding: 7px; font-size: 16px; border: 1px solid var(--line); border-radius: 8px; text-align: center; }
 
-.entries { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+/* Kalem satırı: büyük durum düğmeleri, uyarılar etiket */
+.entries { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
 .entry {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  background: var(--soft-2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px;
+  background: var(--soft-2); border: 1px solid var(--line); border-left: 6px solid var(--line); border-radius: 8px; padding: 8px 10px;
 }
-.entry.nostatus { background: var(--warn-bg); border-color: var(--warn-line); }
-.entry .qty { width: 58px; padding: 5px; border: 1px solid var(--line); border-radius: 6px; text-align: center; }
-.entry .time { color: var(--muted); font-size: 12px; }
+.entry.nostatus { background: var(--warn-bg); border-color: var(--warn-line); border-left-color: var(--warn); }
+.entry.st-satilabilir { border-left-color: var(--ok); }
+.entry.st-imha { border-left-color: var(--bad); }
+.qtylbl { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+.entry .qty { width: 64px; padding: 8px; font-size: 18px; font-weight: 700; border: 1px solid var(--line); border-radius: 8px; text-align: center; }
 .entry .grow { flex: 1; }
+.tag { padding: 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 700; background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn-line); }
 
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .seg button { border: 0; background: var(--card); padding: 7px 12px; cursor: pointer; font-weight: 600; border-right: 1px solid var(--line); }
 .seg button:last-child { border-right: 0; }
 .seg button.on { background: var(--sel); }
+.seg.big-seg button { padding: 10px 16px; font-size: 16px; }
+.seg.big-seg button.ok:not(.on) { color: var(--ok); }
+.seg.big-seg button.bad:not(.on) { color: var(--bad); }
 .seg button.ok.on { background: var(--ok); color: var(--on-ok); }
 .seg button.bad.on { background: var(--bad); color: var(--card); }
 #defaultStatus { display: flex; }
-#defaultStatus button { flex: 1; }
+#defaultStatus button { flex: 1; white-space: nowrap; padding-inline: 8px; }
 
 .thumbs { display: flex; gap: 6px; flex-wrap: wrap; }
 .thumb { width: 64px; height: 48px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); cursor: zoom-in; background: var(--soft); }
 .thumb.zoom { width: min(480px, 100%); height: auto; cursor: zoom-out; }
-.nophoto { font-size: 12px; color: var(--warn); font-weight: 600; }
+
 
 .unknown { background: var(--bad-bg); border: 1px solid var(--bad-line); border-radius: var(--radius); padding: 12px; margin-bottom: 10px; }
 .unknown .row { flex-wrap: wrap; gap: 6px; margin-top: 8px; }
